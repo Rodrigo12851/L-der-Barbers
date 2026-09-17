@@ -88,6 +88,15 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleShareClientLinkWhatsApp = () => {
+    const adminBarber = barbers.find(b => b.id === adminBarberId) || user;
+    const barberName = (adminBarber as any)?.nickname || adminBarber?.name || 'Administrador';
+    const text = encodeURIComponent(
+      `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente comigo pelo link abaixo:\n🔗 ${clientLink}`
+    );
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
+
   // Filters for appointments
   const [filterBarber, setFilterBarber] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -440,6 +449,15 @@ export const AdminDashboard: React.FC = () => {
             >
               {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedLink ? 'Link Copiado!' : 'Copiar meu link de cliente'}</span>
+            </button>
+
+            <button
+              onClick={handleShareClientLinkWhatsApp}
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-600/20 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-600/30 cursor-pointer transition shadow-md"
+              title="Enviar link para clientes no WhatsApp"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>WhatsApp</span>
             </button>
 
             <button

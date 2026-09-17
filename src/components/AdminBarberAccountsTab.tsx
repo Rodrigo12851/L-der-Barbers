@@ -26,7 +26,13 @@ import {
   AlertCircle, 
   CheckCircle2,
   Shield,
-  UserPlus
+  UserPlus,
+  Copy,
+  Check,
+  Share2,
+  Smartphone,
+  ExternalLink,
+  Link2
 } from 'lucide-react';
 
 export const AdminBarberAccountsTab: React.FC = () => {
@@ -34,6 +40,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
   const [allBarbers, setAllBarbers] = useState<Barber[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -82,6 +89,48 @@ export const AdminBarberAccountsTab: React.FC = () => {
   const handleRefresh = () => {
     setRefreshing(true);
     loadData();
+  };
+
+  const handleCopyLink = async (url: string, key: string, label: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedKey(key);
+      showToast(`${label} copiado!`);
+      setTimeout(() => setCopiedKey(null), 3000);
+    } catch {
+      showToast(`Link: ${url}`);
+    }
+  };
+
+  const handleShareBarberApp = (acc: BarberAccount) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const appUrl = `${origin}/barbeiro`;
+    const barberName = acc.nickname || acc.barber_name?.split(' ')[0] || 'Barbeiro';
+    const text = encodeURIComponent(
+      `💈 *Líder Barbers — Acesso do Barbeiro*\n\nOlá ${barberName}! Seu acesso ao portal e aplicativo foi configurado.\n\n📲 *Abra no seu celular para baixar o app e acessar sua agenda:*\n${appUrl}\n\n🔑 *Seu Login:* ${acc.email}\n(Utilize a senha cadastrada para entrar)`
+    );
+    const phone = acc.phone ? acc.phone.replace(/\D/g, '') : '';
+    const waUrl = phone ? `https://wa.me/55${phone}?text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const handleShareBarberClientLink = (acc: BarberAccount) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const clientUrl = `${origin}/agendar?barbeiro=${acc.barber_id}`;
+    const barberName = acc.nickname || acc.barber_name?.split(' ')[0] || 'Barbeiro';
+    const text = encodeURIComponent(
+      `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente comigo pelo link abaixo:\n🔗 ${clientUrl}`
+    );
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
   // Open modal to create a new barber from scratch
@@ -382,6 +431,120 @@ export const AdminBarberAccountsTab: React.FC = () => {
                     Este barbeiro existe na vitrine mas ainda não possui login de acesso próprio.
                   </p>
                 )}
+              </div>
+
+              {/* Links Exclusivos do Barbeiro (App & Clientes) */}
+              <div className="rounded-xl border border-[#232838] bg-[#0c0d14] p-3 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-[#1b1f2e] pb-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#f5d77f] flex items-center gap-1">
+                    <Link2 className="w-3 h-3 text-[#d4af37]" />
+                    Links deste Barbeiro
+                  </span>
+                  <span className="text-[9px] text-neutral-400">App da Equipe & Clientes</span>
+                </div>
+
+                {/* 1. Link do App do Barbeiro */}
+                <div className="rounded-lg bg-[#141724] border border-[#202538] p-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                      <Smartphone className="w-3 h-3 text-emerald-400" />
+                      1. App do Barbeiro (Área Dele / Baixar App)
+                    </span>
+                    <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.2 rounded">
+                      /barbeiro
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400">
+                    O barbeiro abre este link no celular para entrar na área dele e instalar o app na tela inicial.
+                  </p>
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLink(`${window.location.origin}/barbeiro`, `app-${acc.barber_id}`, 'Link do App do Barbeiro')}
+                      className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-[#1c2032] border border-[#2c334d] text-[11px] font-bold text-neutral-200 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
+                    >
+                      {copiedKey === `app-${acc.barber_id}` ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-neutral-400" />
+                          <span>Copiar Link do App</span>
+                        </>
+                      )}
+                    </button>
+
+                    {acc.has_account && (
+                      <button
+                        type="button"
+                        onClick={() => handleShareBarberApp(acc)}
+                        className="flex items-center justify-center gap-1 py-1 px-2.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 hover:bg-emerald-600/30 transition cursor-pointer"
+                        title="Enviar acesso completo via WhatsApp para o barbeiro"
+                      >
+                        <Share2 className="w-3 h-3" />
+                        <span>WhatsApp</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Link Exclusivo para Clientes */}
+                <div className="rounded-lg bg-[#141724] border border-[#d4af37]/30 p-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#f5d77f] flex items-center gap-1.5">
+                      <Scissors className="w-3 h-3 text-[#d4af37]" />
+                      2. Link para Clientes (Cai Direto com Ele)
+                    </span>
+                    <span className="text-[9px] font-mono text-[#f5d77f] bg-[#d4af37]/15 border border-[#d4af37]/40 px-1.5 py-0.2 rounded">
+                      Pré-selecionado
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400">
+                    O barbeiro repassa aos clientes. Ao clicar, ele já vem selecionado e o cliente escolhe o horário!
+                  </p>
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLink(`${window.location.origin}/agendar?barbeiro=${acc.barber_id}`, `client-${acc.barber_id}`, 'Link de Clientes do Barbeiro')}
+                      className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-[#1c2032] border border-[#2c334d] text-[11px] font-bold text-neutral-200 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
+                    >
+                      {copiedKey === `client-${acc.barber_id}` ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-[#d4af37]" />
+                          <span>Copiar Link de Clientes</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleShareBarberClientLink(acc)}
+                      className="flex items-center justify-center gap-1 py-1 px-2.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 hover:bg-emerald-600/30 transition cursor-pointer"
+                      title="Compartilhar agendamento no WhatsApp"
+                    >
+                      <Share2 className="w-3 h-3" />
+                      <span>WhatsApp</span>
+                    </button>
+
+                    <a
+                      href={`/agendar?barbeiro=${acc.barber_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-[#181a26] border border-[#292e42] text-[11px] font-semibold text-neutral-400 hover:text-white transition cursor-pointer"
+                      title="Testar link de agendamento"
+                    >
+                      <ExternalLink className="w-3 h-3 text-[#d4af37]" />
+                      <span>Testar</span>
+                    </a>
+                  </div>
+                </div>
               </div>
 
               {/* Actions */}
