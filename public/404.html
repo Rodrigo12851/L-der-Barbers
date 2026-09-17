@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <title>Líder Barbers</title>
+    <script type="text/javascript">
+      // Redirecionamento instantâneo para SPA em servidores estáticos
+      var l = window.location;
+      var path = l.pathname.replace(/^\/+/, '');
+      var search = l.search ? l.search : '';
+      var hash = l.hash ? l.hash : '';
+      l.replace('/?p=' + encodeURIComponent(path) + (search ? '&' + search.slice(1) : '') + hash);
+    </script>
+  </head>
+  <body style="background-color: #0d0e11; color: #d4af37; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+    <p>Carregando Líder Barbers...</p>
+  </body>
+</html>

@@ -21,7 +21,24 @@ interface RouterContextType {
 }
 
 export const getRouteFromPath = (fullPath: string): RouteName => {
-  const cleanPath = (fullPath.split('?')[0].split('#')[0] || '/').toLowerCase().trim();
+  let cleanPath = (fullPath.split('?')[0] || '/').toLowerCase().trim();
+
+  // If path contains hash like /#/proprietario or #/proprietario
+  if (cleanPath.includes('#')) {
+    const hashPart = cleanPath.split('#')[1] || '';
+    if (hashPart.startsWith('/')) {
+      cleanPath = hashPart;
+    } else if (hashPart) {
+      cleanPath = '/' + hashPart;
+    } else {
+      cleanPath = cleanPath.split('#')[0] || '/';
+    }
+  }
+
+  // Strip trailing slash if not root
+  if (cleanPath.length > 1 && cleanPath.endsWith('/')) {
+    cleanPath = cleanPath.slice(0, -1);
+  }
 
   if (cleanPath === '/' || cleanPath === '') {
     return 'home';
@@ -65,17 +82,57 @@ const RouterContext = createContext<RouterContextType>({
 
 export const useRouter = () => useContext(RouterContext);
 
+const getResolvedPath = (): string => {
+  if (typeof window === 'undefined') return '/';
+
+  // 1. Check if there is a hash route like /#/proprietario or #proprietario
+  const hash = window.location.hash;
+  if (hash) {
+    if (hash.startsWith('#/')) {
+      return hash.slice(1);
+    }
+    if (hash.startsWith('#') && hash.length > 1) {
+      return '/' + hash.slice(1);
+    }
+  }
+
+  // 2. Check query param redirect fallback ?p=/proprietario or ?p=proprietario
+  const search = window.location.search;
+  if (search) {
+    const sp = new URLSearchParams(search);
+    let redirectParam = sp.get('p') || sp.get('r');
+    if (redirectParam) {
+      if (!redirectParam.startsWith('/')) {
+        redirectParam = '/' + redirectParam;
+      }
+      try {
+        window.history.replaceState({}, '', redirectParam);
+      } catch (e) {
+        // ignore
+      }
+      return redirectParam;
+    }
+  }
+
+  // 3. Default standard pathname + search
+  return window.location.pathname + window.location.search || '/';
+};
+
 export const RouterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [path, setPath] = useState(
-    () => (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/')
-  );
+  const [path, setPath] = useState<string>(getResolvedPath);
 
   useEffect(() => {
-    const handlePopState = () => {
-      setPath(window.location.pathname + window.location.search || '/');
+    const handleLocationChange = () => {
+      setPath(getResolvedPath());
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
   }, []);
 
   const navigate = (to: string) => {
