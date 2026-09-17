@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "ShopSettings": {
+      "title": "ShopSettings",
+      "description": "General settings for the barbershop",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "logo_url": { "type": "string" },
+        "hero_image_url": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "address": { "type": "string" },
+        "instagram": { "type": "string" },
+        "opening_hours": { "type": "string" }
+      },
+      "required": ["name", "phone"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "Barbershop service offering",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "duration_minutes": { "type": "number" },
+        "icon_name": { "type": "string" },
+        "category": { "type": "string" },
+        "active": { "type": "boolean" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name", "price", "duration_minutes", "active"]
+    },
+    "Barber": {
+      "title": "Barber",
+      "description": "Barber professional profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nickname": { "type": "string" },
+        "bio": { "type": "string" },
+        "photo_url": { "type": "string" },
+        "specialties": { "type": "array" },
+        "active": { "type": "boolean" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviews_count": { "type": "number" },
+        "commission_rate": { "type": "number" },
+        "has_login": { "type": "boolean" },
+        "login_email": { "type": "string" }
+      },
+      "required": ["id", "name", "active"]
+    },
+    "BarberSchedule": {
+      "title": "BarberSchedule",
+      "description": "Barber weekly working hours",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "barber_id": { "type": "string" },
+        "day_of_week": { "type": "number" },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "break_start": { "type": "string" },
+        "break_end": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "barber_id", "day_of_week", "start_time", "end_time", "active"]
+    },
+    "BarberTimeOff": {
+      "title": "BarberTimeOff",
+      "description": "Barber time off and breaks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "barber_id": { "type": "string" },
+        "date": { "type": "string" },
+        "reason": { "type": "string" },
+        "full_day": { "type": "boolean" },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" }
+      },
+      "required": ["id", "barber_id", "date"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Customer appointment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "service_id": { "type": "string" },
+        "barber_id": { "type": "string" },
+        "customer_name": { "type": "string" },
+        "customer_phone": { "type": "string" },
+        "customer_email": { "type": "string" },
+        "notes": { "type": "string" },
+        "date": { "type": "string" },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "code", "service_id", "barber_id", "customer_name", "customer_phone", "date", "start_time", "end_time", "price", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role access",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "active": { "type": "boolean" },
+        "barber_id": { "type": "string" },
+        "commission_rate": { "type": "number" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "email", "name", "role", "active"]
+    }
+  },
+  "firestore": {
+    "/settings/{settingId}": {
+      "schema": "ShopSettings",
+      "description": "General settings of the shop"
+    },
+    "/services/{serviceId}": {
+      "schema": "Service",
+      "description": "List of available services"
+    },
+    "/barbers/{barberId}": {
+      "schema": "Barber",
+      "description": "List of active barbers"
+    },
+    "/barber_schedules/{scheduleId}": {
+      "schema": "BarberSchedule",
+      "description": "Barber weekly availability schedules"
+    },
+    "/barber_time_off/{timeOffId}": {
+      "schema": "BarberTimeOff",
+      "description": "Barber time off exceptions"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Customer bookings and appointments"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Staff and user profiles"
+    }
+  }
+}

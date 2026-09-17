@@ -24,7 +24,8 @@ O **Líder Barbers** é uma plataforma full-stack moderna e de alto desempenho p
 - **Ambiente**: Node.js com TypeScript (executado via `tsx` em desenvolvimento e compilado via `esbuild` em produção).
 - **Servidor Web**: Express (`server.ts`) operando na porta obrigatória `3000` (host `0.0.0.0`).
 - **Middleware Vite**: Integrado ao Express em modo desenvolvimento (`createServer({ server: { middlewareMode: true }, appType: 'spa' })`) e servindo a pasta `dist/` em modo de produção com fallback SPA.
-- **Persistência**: Arquivo JSON no disco (`/data/db.json`) com sincronização atômica para gravação e recuperação resiliente. Não requer banco de dados externo ou credenciais em nuvem.
+- **Persistência em Nuvem (Firebase Firestore)**: Banco de dados em nuvem Google Cloud Firestore integrado (`erudite-component-q9v0l`), permitindo persistência em tempo real compartilhada entre dispositivos (celulares, tablets, computadores), garantindo funcionamento total na Vercel (onde não há servidor Node residente) e no ambiente containerizado.
+- **Persistência Local de Backup**: Arquivo JSON no disco (`/data/db.json`) utilizado como semente (seed) e fallback resiliente.
 
 ### 2.2 Frontend
 - **Framework**: React 19 com TypeScript.
@@ -220,6 +221,7 @@ O arquivo `/data/db.json` centraliza o estado do sistema:
 
 | Data (UTC/Local) | Autor | Descrição da Alteração | Módulos Impactados |
 | :--- | :--- | :--- | :--- |
+| **2026-09-17** | IA Assistant | **Integração Completa do Banco de Dados Cloud (Firebase Firestore)**: Provisão e configuração do projeto Firebase `erudite-component-q9v0l`, criação e deploy de `firestore.rules`, especificação em `firebase-blueprint.json`, inicialização segura do SDK em `src/lib/firebase.ts`, criação da camada de serviço `src/lib/firestoreService.ts` com rotina de auto-seeding a partir de `/data/db.json`, e conexão de todos os métodos de agendamento, profissionais, serviços, bloqueios, métricas e autenticação em `src/lib/api.ts`. Agora os dados persistem em nuvem em tempo real e sincronizam instantaneamente entre todos os celulares e computadores, inclusive no deploy da Vercel. | `firebase-blueprint.json`, `firestore.rules`, `src/lib/firebase.ts`, `src/lib/firestoreService.ts`, `src/lib/api.ts`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-17** | IA Assistant | Resolução do erro 404 de rotas na Vercel e provedores estáticos: criação de `vercel.json` com regra de rewrite para `/index.html`, criação de `public/_redirects`, criação de fallback `public/404.html` e aprimoramento do `RouterContext.tsx` com suporte resiliente a hash routes (`#/proprietario`) e redirecionamentos por query parameter (`?p=`). | `vercel.json`, `public/_redirects`, `public/404.html`, `RouterContext.tsx`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-17** | IA Assistant | Criação e formalização da documentação viva oficial do projeto (`DOCUMENTACAO-PROJETO.md`) e configuração do `AGENTS.md` para forçar leitura e atualização contínua em todos os turnos. | `DOCUMENTACAO-PROJETO.md`, `AGENTS.md` |
 | **2026-09-17** | IA Assistant | Implementação do isolamento de acessos: remoção de botões de login do rodapé/menu de clientes, criação de portais e links dedicados para Dono (`/proprietario`), Administrador (`/admin`) e Barbeiro (`/barbeiro`) com suporte e instruções para instalação do PWA em cada função. | `Header.tsx`, `Footer.tsx`, `OwnerDashboard.tsx`, `AdminDashboard.tsx`, `BarberDashboard.tsx`, `AuthPage.tsx`, `DedicatedRolePortalLogin.tsx`, `RoleAppDownloadCard.tsx`, `InstallAppModal.tsx` |
