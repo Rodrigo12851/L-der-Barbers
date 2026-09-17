@@ -690,13 +690,13 @@ export const OwnerDashboard: React.FC = () => {
                   <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-[#12141c]">
                     <span className="text-neutral-400 text-[11px]">Bruto Gerado:</span>
                     <span className="font-bold text-neutral-200">
-                      R$ {b.gross.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {Number(b?.gross || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-[#1a1d2a] border border-[#d4af37]/20">
                     <span className="text-[#f5d77f] text-[11px] font-semibold">Comissão Barbeiro:</span>
                     <span className="font-black text-[#f5d77f]">
-                      R$ {b.net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {Number(b?.net || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>

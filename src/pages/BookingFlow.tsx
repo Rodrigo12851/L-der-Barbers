@@ -320,7 +320,7 @@ export const BookingFlow: React.FC = () => {
 
                   <div className="text-right shrink-0 pl-2">
                     <span className="block text-sm font-black text-[#f5d77f]">
-                      R$ {srv.price.toFixed(2).replace('.', ',')}
+                      R$ {Number(srv?.price || 0).toFixed(2).replace('.', ',')}
                     </span>
                     <span className="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-wider text-[#d4af37] bg-[#d4af37]/10 px-2 py-0.5 rounded">
                       Escolher →
@@ -356,7 +356,7 @@ export const BookingFlow: React.FC = () => {
 
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-sm font-black text-[#f5d77f]">
-                  R$ {selectedService.price.toFixed(2).replace('.', ',')}
+                  R$ {Number(selectedService?.price || 0).toFixed(2).replace('.', ',')}
                 </span>
                 <button
                   type="button"
@@ -643,7 +643,7 @@ export const BookingFlow: React.FC = () => {
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    <span>Confirmar Agendamento • R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
+                    <span>Confirmar Agendamento • R$ {Number(selectedService?.price || 0).toFixed(2).replace('.', ',')}</span>
                   </>
                 )}
               </button>

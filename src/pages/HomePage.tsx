@@ -165,7 +165,7 @@ export const HomePage: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <span className="text-xl font-black text-white font-cinzel">
-                        R$ {service.price.toFixed(2).replace('.', ',')}
+                        R$ {Number(service?.price || 0).toFixed(2).replace('.', ',')}
                       </span>
                       <span className="block text-[11px] text-neutral-400">
                         {service.duration_minutes} minutos
@@ -276,7 +276,7 @@ export const HomePage: React.FC = () => {
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa8222] py-2.5 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 active:scale-95 transition shadow-md"
                     >
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>Agendar com {barber.nickname.split(' ')[0]}</span>
+                      <span>Agendar com {(barber.nickname || barber.name || 'Barbeiro').split(' ')[0]}</span>
                     </button>
                   </div>
                 </div>

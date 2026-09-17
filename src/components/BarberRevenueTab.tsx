@@ -214,7 +214,7 @@ export const BarberRevenueTab: React.FC<BarberRevenueTabProps> = ({ barberId, ba
                             {apt.customer_name}
                           </span>
                           <span className="text-[10px] text-neutral-400 font-mono">
-                            {apt.start_time} • {apt.date.split('-').reverse().slice(0, 2).join('/')}
+                            {apt.start_time} • {(apt.date || '').split('-').reverse().slice(0, 2).join('/')}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-neutral-300 truncate">

@@ -581,7 +581,7 @@ export const AdminDashboard: React.FC = () => {
                   <DollarSign className="w-4 h-4 text-[#d4af37]" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-white font-cinzel">
-                  R$ {metrics.totalForecastRevenue.toFixed(2).replace('.', ',')}
+                  R$ {Number(metrics?.totalForecastRevenue || 0).toFixed(2).replace('.', ',')}
                 </div>
                 <span className="text-[11px] text-neutral-400 block">
                   Agendamentos ativos (confirmados + concluídos)
@@ -594,7 +594,7 @@ export const AdminDashboard: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-cinzel">
-                  R$ {metrics.totalRealizedRevenue.toFixed(2).replace('.', ',')}
+                  R$ {Number(metrics?.totalRealizedRevenue || 0).toFixed(2).replace('.', ',')}
                 </div>
                 <span className="text-[11px] text-neutral-400 block">
                   Serviços com status "Concluído"
@@ -607,7 +607,7 @@ export const AdminDashboard: React.FC = () => {
                   <Calendar className="w-4 h-4 text-blue-400" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-white font-cinzel">
-                  {metrics.confirmed}
+                  {metrics?.confirmed ?? 0}
                 </div>
                 <span className="text-[11px] text-neutral-400 block">
                   Clientes agendados aguardando horário
@@ -620,7 +620,7 @@ export const AdminDashboard: React.FC = () => {
                   <XCircle className="w-4 h-4 text-rose-400" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-rose-400 font-cinzel">
-                  {metrics.noShow} / {metrics.cancelled}
+                  {metrics?.noShow ?? 0} / {metrics?.cancelled ?? 0}
                 </div>
                 <span className="text-[11px] text-neutral-400 block">
                   Perdas / desmarcações registradas
@@ -647,14 +647,14 @@ export const AdminDashboard: React.FC = () => {
                         <span className="text-xs text-[#d4af37] font-semibold">{bm.nickname}</span>
                       </div>
                       <span className="rounded-full bg-[#202434] px-2.5 py-1 text-xs font-bold text-white">
-                        {bm.total_appointments} atendimentos
+                        {bm.total_appointments ?? 0} atendimentos
                       </span>
                     </div>
 
                     <div className="pt-2 border-t border-[#202434]">
                       <span className="text-[11px] text-neutral-400 block">Faturamento Estimado:</span>
                       <span className="text-xl font-black text-[#f5d77f] font-cinzel">
-                        R$ {bm.revenue.toFixed(2).replace('.', ',')}
+                        R$ {Number(bm?.revenue || 0).toFixed(2).replace('.', ',')}
                       </span>
                     </div>
                   </div>
@@ -746,7 +746,7 @@ export const AdminDashboard: React.FC = () => {
 
                           <td className="py-3.5 px-4">
                             <strong className="text-white block font-mono">
-                              {apt.date.split('-').reverse().join('/')}
+                              {(apt.date || '').split('-').reverse().join('/')}
                             </strong>
                             <span className="text-neutral-400">
                               {apt.start_time} - {apt.end_time}
@@ -758,7 +758,7 @@ export const AdminDashboard: React.FC = () => {
                               {apt.service?.name}
                             </strong>
                             <span className="text-[#f5d77f] font-bold">
-                              R$ {apt.price.toFixed(2).replace('.', ',')}
+                              R$ {Number(apt?.price || 0).toFixed(2).replace('.', ',')}
                             </span>
                           </td>
 
@@ -849,7 +849,7 @@ export const AdminDashboard: React.FC = () => {
                         </span>
                       </div>
                       <span className="text-xl font-black text-[#f5d77f] font-cinzel">
-                        R$ {srv.price.toFixed(2).replace('.', ',')}
+                        R$ {Number(srv?.price || 0).toFixed(2).replace('.', ',')}
                       </span>
                     </div>
 

@@ -251,7 +251,7 @@ export const BookingConfirmationPage: React.FC = () => {
                       {appointment.service?.name || 'Serviço'}
                     </span>
                     <span className="text-neutral-400 text-[11px]">
-                      {appointment.service?.duration_minutes} min • R$ {appointment.price.toFixed(2).replace('.', ',')}
+                      {appointment.service?.duration_minutes} min • R$ {Number(appointment?.price || 0).toFixed(2).replace('.', ',')}
                     </span>
                   </div>
                 </div>
@@ -280,7 +280,7 @@ export const BookingConfirmationPage: React.FC = () => {
                   <div>
                     <span className="text-neutral-400 block">Data do Atendimento:</span>
                     <span className="font-bold text-white text-sm block">
-                      {appointment.date.split('-').reverse().join('/')}
+                      {(appointment.date || '').split('-').reverse().join('/')}
                     </span>
                   </div>
                 </div>
@@ -309,7 +309,7 @@ export const BookingConfirmationPage: React.FC = () => {
                 <div className="text-right">
                   <span className="text-neutral-400">Total no balcão: </span>
                   <span className="text-lg font-black text-[#f5d77f] font-cinzel">
-                    R$ {appointment.price.toFixed(2).replace('.', ',')}
+                    R$ {Number(appointment?.price || 0).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
               </div>

@@ -83,7 +83,7 @@ export const ServicesPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <span className="text-2xl font-black text-white font-cinzel">
-                        R$ {service.price.toFixed(2).replace('.', ',')}
+                        R$ {Number(service?.price || 0).toFixed(2).replace('.', ',')}
                       </span>
                       <div className="flex items-center justify-end gap-1 text-[11px] text-neutral-400 mt-0.5">
                         <Clock className="w-3 h-3 text-[#d4af37]" />

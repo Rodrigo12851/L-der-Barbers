@@ -654,6 +654,52 @@ export async function getBarberRevenueFS(barberId: string, period = 'all'): Prom
   };
 }
 
+export async function getAdminMetricsFS(): Promise<any> {
+  const appts = await getAppointmentsFS();
+  const barbers = await getBarbersFS(true);
+
+  const totalAppointments = appts.length;
+  const confirmed = appts.filter(a => a.status === 'confirmed').length;
+  const completed = appts.filter(a => a.status === 'completed').length;
+  const noShow = appts.filter(a => a.status === 'no_show').length;
+  const cancelled = appts.filter(a => a.status === 'cancelled').length;
+
+  const totalForecastRevenue = appts
+    .filter(a => a.status !== 'cancelled')
+    .reduce((acc, curr) => acc + (curr.price || 0), 0);
+
+  const totalRealizedRevenue = appts
+    .filter(a => a.status === 'completed')
+    .reduce((acc, curr) => acc + (curr.price || 0), 0);
+
+  const barberMetrics = barbers.map(b => {
+    const barberApts = appts.filter(a => a.barber_id === b.id && a.status !== 'cancelled');
+    const revenue = barberApts.reduce((acc, curr) => acc + (curr.price || 0), 0);
+    return {
+      barber_id: b.id,
+      name: b.name,
+      nickname: b.nickname || b.name,
+      total_appointments: barberApts.length,
+      revenue,
+    };
+  });
+
+  return {
+    totalAppointments,
+    confirmed,
+    completed,
+    noShow,
+    cancelled,
+    totalForecastRevenue,
+    totalRealizedRevenue,
+    barberMetrics,
+    total_appointments: totalAppointments,
+    completed_appointments: completed,
+    gross_revenue: totalRealizedRevenue,
+    active_barbers: barbers.filter(b => b.active).length,
+  };
+}
+
 export async function getOwnerOverviewFS(): Promise<OwnerOverviewMetrics> {
   const appts = await getAppointmentsFS({ status: 'completed' });
   const barbers = await getBarbersFS(true);

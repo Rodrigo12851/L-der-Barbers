@@ -544,10 +544,10 @@ export const BarberDashboard: React.FC = () => {
                     <div className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-[#181b26] border border-[#202534]">
                       <div className="truncate mr-2">
                         <span className="text-neutral-300 font-semibold">{apt.service?.name}</span>
-                        <span className="text-[10px] text-neutral-500 ml-1.5">({apt.date.split('-').reverse().slice(0, 2).join('/')})</span>
+                        <span className="text-[10px] text-neutral-500 ml-1.5">({(apt.date || '').split('-').reverse().slice(0, 2).join('/')})</span>
                       </div>
                       <span className="text-xs font-black text-[#f5d77f] shrink-0">
-                        R$ {apt.price.toFixed(2).replace('.', ',')}
+                        R$ {Number(apt?.price || 0).toFixed(2).replace('.', ',')}
                       </span>
                     </div>
 
@@ -752,7 +752,7 @@ export const BarberDashboard: React.FC = () => {
                     <div>
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-sm font-bold text-white">
-                          {off.date.split('-').reverse().join('/')}
+                          {(off.date || '').split('-').reverse().join('/')}
                         </span>
                         <span className="rounded-md bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-300">
                           {off.full_day ? 'Dia Todo' : `${off.start_time} - ${off.end_time}`}

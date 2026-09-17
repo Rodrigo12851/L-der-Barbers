@@ -329,19 +329,7 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 
 export async function fetchAdminMetrics(): Promise<any> {
   return tryFirestoreOrApi(
-    async () => {
-      const appts = await FS.getAppointmentsFS();
-      const barbers = await FS.getBarbersFS(true);
-      const totalAppointments = appts.length;
-      const completed = appts.filter(a => a.status === 'completed');
-      const grossRevenue = completed.reduce((acc, a) => acc + (a.price || 0), 0);
-      return {
-        total_appointments: totalAppointments,
-        completed_appointments: completed.length,
-        gross_revenue: grossRevenue,
-        active_barbers: barbers.filter(b => b.active).length,
-      };
-    },
+    () => FS.getAdminMetricsFS(),
     async () => {
       const res = await fetch('/api/admin/metrics');
       if (!res.ok) throw new Error('Erro ao carregar métricas administrativas');
