@@ -763,9 +763,28 @@ export const OwnerDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
-                  {editingAdmin ? 'Nova Senha (deixe em branco para manter a atual)' : 'Senha de Acesso'}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300">
+                    {editingAdmin ? 'Nova Senha (deixe em branco para manter a atual)' : 'Senha de Acesso'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-[#d4af37] transition cursor-pointer"
+                  >
+                    {showPassword ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Ocultar</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Ver</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -778,7 +797,8 @@ export const OwnerDashboard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-2 text-neutral-400 hover:text-white"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                    className="absolute right-2.5 top-2 text-neutral-400 hover:text-[#d4af37] transition cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>

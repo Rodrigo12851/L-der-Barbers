@@ -586,9 +586,20 @@ export async function loginFS(email: string, password: string): Promise<{ user: 
   try {
     const snap = await getDocs(collection(db, path));
     const users = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-    const matched = users.find(
-      u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password && u.active !== false
-    );
+    const normalizedEmail = email.trim().toLowerCase();
+    const matched = users.find(u => {
+      if (u.active === false || u.password !== password) return false;
+      const uEmail = (u.email || '').toLowerCase();
+      if (uEmail === normalizedEmail) return true;
+      // Aliases para facilitar acesso do dono e admin
+      if (u.role === 'owner' && (normalizedEmail === 'dono' || normalizedEmail === 'allinesoares050@gmail.com' || normalizedEmail === 'dono@liderbarbers.com.br')) {
+        return true;
+      }
+      if (u.role === 'admin' && (normalizedEmail === 'admin' || normalizedEmail === 'admin@liderbarbers.com.br' || normalizedEmail === 'admin@liberdade.com.br')) {
+        return true;
+      }
+      return false;
+    });
 
     if (!matched) {
       throw new Error('E-mail ou senha incorretos.');

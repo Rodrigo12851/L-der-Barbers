@@ -1013,9 +1013,14 @@ app.post('/api/auth/login', (req, res) => {
   const normalizedEmail = email.toLowerCase().trim();
   const user = db.users.find(u => {
     const uEmail = (u.email || '').toLowerCase().trim();
-    return uEmail === normalizedEmail ||
-      (normalizedEmail === 'admin@liderbarbers.com.br' && uEmail === 'admin@liberdade.com.br') ||
-      (normalizedEmail === 'admin@liberdade.com.br' && uEmail === 'admin@liderbarbers.com.br');
+    if (uEmail === normalizedEmail) return true;
+    if (u.role === 'owner' && (normalizedEmail === 'dono' || normalizedEmail === 'dono@liderbarbers.com.br' || normalizedEmail === 'allinesoares050@gmail.com')) {
+      return true;
+    }
+    if (u.role === 'admin' && (normalizedEmail === 'admin' || normalizedEmail === 'admin@liderbarbers.com.br' || normalizedEmail === 'admin@liberdade.com.br')) {
+      return true;
+    }
+    return false;
   });
 
   if (!user || user.password !== password) {

@@ -15,7 +15,9 @@ import {
   CheckCircle2,
   Copy,
   Check,
-  Home
+  Home,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { InstallAppModal } from './InstallAppModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
@@ -48,6 +50,7 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
   const [error, setError] = useState<string | null>(null);
   const [installModalOpen, setInstallModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const roleConfigs = {
     owner: {
@@ -202,6 +205,34 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
             </div>
           )}
 
+          {/* Dica de Acesso Padrão */}
+          <div className="rounded-xl border border-[#d4af37]/20 bg-[#d4af37]/5 px-3 py-2 text-[11px] text-neutral-300 flex items-center justify-between gap-2">
+            <div>
+              <span className="text-[#d4af37] font-semibold">Senha inicial: </span>
+              <code className="font-mono bg-[#161822] px-1.5 py-0.5 rounded text-white border border-[#2b3040]">
+                {role === 'owner' ? 'dono' : role === 'admin' ? 'admin' : 'barber'}
+              </code>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (role === 'owner') {
+                  setEmail('dono@liderbarbers.com.br');
+                  setPassword('dono');
+                } else if (role === 'admin') {
+                  setEmail('admin@liderbarbers.com.br');
+                  setPassword('admin');
+                } else {
+                  setEmail('marcos@liberdade.com.br');
+                  setPassword('barber');
+                }
+              }}
+              className="text-[10px] text-[#d4af37] underline hover:text-[#f5d77f] cursor-pointer"
+            >
+              Preencher dados
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
@@ -221,19 +252,46 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
-                Senha
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300">
+                  Senha
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-[#d4af37] transition cursor-pointer"
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Ocultar</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Ver senha</span>
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-10 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                  className="absolute right-3 top-2 text-neutral-400 hover:text-[#d4af37] transition cursor-pointer p-1"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 

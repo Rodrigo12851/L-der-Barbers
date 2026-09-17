@@ -61,7 +61,10 @@ O arquivo `/data/db.json` centraliza o estado do sistema:
 
 ### 4.1 Proprietário Geral (`owner`)
 - **Rotas de Acesso**: `/proprietario`, `/app-dono`, `/dono`.
-- **Credenciais Iniciais Padrão**: `dono@liderbarbers.com.br` / `dono`.
+- **Credenciais Iniciais Padrão**:
+  - E-mail principal: `dono@liderbarbers.com.br` (também aceita `allinesoares050@gmail.com` ou `dono`)
+  - Senha: `dono`
+- **Recurso de Visualização**: Todos os campos de senha possuem botão com ícone de olho (`Eye`/`EyeOff`) para exibir ou ocultar os caracteres digitados.
 - **Atribuições**:
   - Visão macro de faturamento bruto e líquido consolidado de toda a rede.
   - Cadastro, edição de dados, redefinição de senha e inativação de contas de **Administradores**.
@@ -221,6 +224,7 @@ O arquivo `/data/db.json` centraliza o estado do sistema:
 
 | Data (UTC/Local) | Autor | Descrição da Alteração | Módulos Impactados |
 | :--- | :--- | :--- | :--- |
+| **2026-09-17** | IA Assistant | **Recurso de Visualização de Senha (Toggle com Ícone de Olho)**: Implementação do botão com ícone de olho (`Eye` / `EyeOff` de `lucide-react`) em todos os formulários e campos de senha da aplicação (`DedicatedRolePortalLogin.tsx`, `AuthPage.tsx`, `OwnerDashboard.tsx` e `AdminBarberAccountsTab.tsx`), permitindo que o usuário visualize ou oculte os caracteres digitados. Adição de card indicador com a credencial inicial padrão e flexibilização de login por e-mail/apelido. | `DedicatedRolePortalLogin.tsx`, `AuthPage.tsx`, `OwnerDashboard.tsx`, `AdminBarberAccountsTab.tsx`, `src/lib/firestoreService.ts`, `server.ts`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-17** | IA Assistant | **Integração Completa do Banco de Dados Cloud (Firebase Firestore)**: Provisão e configuração do projeto Firebase `erudite-component-q9v0l`, criação e deploy de `firestore.rules`, especificação em `firebase-blueprint.json`, inicialização segura do SDK em `src/lib/firebase.ts`, criação da camada de serviço `src/lib/firestoreService.ts` com rotina de auto-seeding a partir de `/data/db.json`, e conexão de todos os métodos de agendamento, profissionais, serviços, bloqueios, métricas e autenticação em `src/lib/api.ts`. Agora os dados persistem em nuvem em tempo real e sincronizam instantaneamente entre todos os celulares e computadores, inclusive no deploy da Vercel. | `firebase-blueprint.json`, `firestore.rules`, `src/lib/firebase.ts`, `src/lib/firestoreService.ts`, `src/lib/api.ts`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-17** | IA Assistant | Resolução do erro 404 de rotas na Vercel e provedores estáticos: criação de `vercel.json` com regra de rewrite para `/index.html`, criação de `public/_redirects`, criação de fallback `public/404.html` e aprimoramento do `RouterContext.tsx` com suporte resiliente a hash routes (`#/proprietario`) e redirecionamentos por query parameter (`?p=`). | `vercel.json`, `public/_redirects`, `public/404.html`, `RouterContext.tsx`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-17** | IA Assistant | Criação e formalização da documentação viva oficial do projeto (`DOCUMENTACAO-PROJETO.md`) e configuração do `AGENTS.md` para forçar leitura e atualização contínua em todos os turnos. | `DOCUMENTACAO-PROJETO.md`, `AGENTS.md` |
