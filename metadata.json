@@ -1,0 +1,6 @@
+{
+  "name": "Líder Barbers",
+  "description": "App de agendamento e site da Líder Barbers com personalização de logo, fotos, painel do barbeiro e gestão administrativa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
