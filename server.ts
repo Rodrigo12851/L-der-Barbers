@@ -1290,16 +1290,20 @@ app.get('/api/admin/barber-accounts', (req, res) => {
   const barberAccounts = db.barbers.map(b => {
     const user = db.users.find(u => u.barber_id === b.id);
     return {
-      barber_id: b.id,
-      barber_name: b.name,
-      barber_nickname: b.nickname,
-      photo_url: b.photo_url,
-      phone: b.phone,
-      commission_rate: b.commission_rate ?? user?.commission_rate ?? 50,
+      id: user ? user.id : b.id,
       user_id: user ? user.id : null,
+      barber_id: b.id,
+      name: b.name,
+      barber_name: b.name,
+      nickname: b.nickname || '',
+      barber_nickname: b.nickname || '',
+      photo_url: b.photo_url || '',
+      phone: user?.phone || b.phone || '',
+      commission_rate: b.commission_rate ?? user?.commission_rate ?? 50,
       email: user ? user.email : (b.email || ''),
+      has_account: !!user,
       has_login: !!user,
-      active: user ? (user.active !== false) : b.active
+      active: user ? (user.active !== false) : (b.active !== false)
     };
   });
   res.json(barberAccounts);

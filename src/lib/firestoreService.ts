@@ -809,20 +809,35 @@ export async function deleteAdminAccountFS(id: string): Promise<void> {
 // ---------------- BARBER ACCOUNTS (ADMIN MANAGES) ----------------
 export async function getAdminBarberAccountsFS(): Promise<BarberAccount[]> {
   await ensureFirestoreSeeded();
-  const snap = await getDocs(collection(db, 'users'));
-  const users = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-  return users
-    .filter(u => u.role === 'barber')
-    .map(u => ({
-      id: u.id,
-      barber_id: u.barber_id,
-      name: u.name,
-      email: u.email,
-      phone: u.phone,
-      active: u.active !== false,
-      commission_rate: u.commission_rate !== undefined ? u.commission_rate : 50,
-      created_at: u.created_at,
-    }));
+  const [bSnap, uSnap] = await Promise.all([
+    getDocs(collection(db, 'barbers')),
+    getDocs(collection(db, 'users'))
+  ]);
+  const barbers = bSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+  const users = uSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+  return barbers.map(b => {
+    const user = users.find(u => u.barber_id === b.id || u.id === b.id);
+    const resolvedName = b.name || user?.name || 'Barbeiro';
+    const resolvedNickname = b.nickname || user?.nickname || '';
+    return {
+      id: user ? user.id : b.id,
+      user_id: user ? user.id : null,
+      barber_id: b.id,
+      name: resolvedName,
+      barber_name: resolvedName,
+      nickname: resolvedNickname,
+      barber_nickname: resolvedNickname,
+      photo_url: b.photo_url || user?.photo_url || '',
+      email: user?.email || b.email || '',
+      phone: user?.phone || b.phone || '',
+      active: user ? (user.active !== false) : (b.active !== false),
+      commission_rate: b.commission_rate !== undefined ? b.commission_rate : (user?.commission_rate ?? 50),
+      has_account: !!user,
+      has_login: !!user,
+      created_at: user?.created_at || b.created_at || new Date().toISOString(),
+    };
+  });
 }
 
 export async function createBarberAccountFS(data: {

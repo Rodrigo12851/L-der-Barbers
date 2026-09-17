@@ -110,11 +110,14 @@ export interface AdminAccount {
 
 export interface BarberAccount {
   id: string;
-  user_id?: string;
+  user_id?: string | null;
   name: string;
   barber_name?: string;
   nickname?: string;
+  barber_nickname?: string;
+  photo_url?: string;
   has_account?: boolean;
+  has_login?: boolean;
   email: string;
   barber_id: string;
   commission_rate: number;

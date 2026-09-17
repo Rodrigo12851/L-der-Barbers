@@ -71,8 +71,48 @@ export const AdminBarberAccountsTab: React.FC = () => {
         fetchAdminBarberAccounts(),
         fetchBarbers(true),
       ]);
-      setAccounts(accs);
       setAllBarbers(brbs);
+
+      // Enrich every account with matching barber data to guarantee name, nickname, photo and account status
+      const enriched: BarberAccount[] = (accs || []).map((acc) => {
+        const matchingBarber = brbs.find((b) => b.id === acc.barber_id || b.id === acc.id);
+        const resolvedName = acc.barber_name || acc.name || matchingBarber?.name || 'Barbeiro';
+        const resolvedNickname = acc.nickname || acc.barber_nickname || matchingBarber?.nickname || '';
+        const resolvedPhoto = acc.photo_url || matchingBarber?.photo_url || '';
+        const hasAccount = acc.has_account !== undefined ? acc.has_account : (acc.has_login !== undefined ? acc.has_login : !!acc.user_id);
+        return {
+          ...acc,
+          name: resolvedName,
+          barber_name: resolvedName,
+          nickname: resolvedNickname,
+          barber_nickname: resolvedNickname,
+          photo_url: resolvedPhoto,
+          has_account: hasAccount,
+        };
+      });
+
+      // Ensure any barber present in the barbers catalog is included even if they don't have an explicit user record yet
+      brbs.forEach((b) => {
+        const exists = enriched.some((a) => a.barber_id === b.id || a.id === b.id);
+        if (!exists) {
+          enriched.push({
+            id: b.id,
+            barber_id: b.id,
+            name: b.name,
+            barber_name: b.name,
+            nickname: b.nickname || '',
+            barber_nickname: b.nickname || '',
+            photo_url: b.photo_url || '',
+            email: b.email || '',
+            phone: b.phone || '',
+            commission_rate: b.commission_rate || 50,
+            has_account: false,
+            active: b.active !== false,
+          });
+        }
+      });
+
+      setAccounts(enriched);
     } catch (err: any) {
       console.error('Error loading barber accounts:', err);
       showToast('Erro ao carregar acessos dos barbeiros.', 'error');
@@ -114,9 +154,9 @@ export const AdminBarberAccountsTab: React.FC = () => {
   const handleShareBarberApp = (acc: BarberAccount) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const appUrl = `${origin}/barbeiro`;
-    const barberName = acc.nickname || acc.barber_name?.split(' ')[0] || 'Barbeiro';
+    const barberName = acc.barber_name || acc.name || acc.nickname || 'Barbeiro';
     const text = encodeURIComponent(
-      `💈 *Líder Barbers — Acesso do Barbeiro*\n\nOlá ${barberName}! Seu acesso ao portal e aplicativo foi configurado.\n\n📲 *Abra no seu celular para baixar o app e acessar sua agenda:*\n${appUrl}\n\n🔑 *Seu Login:* ${acc.email}\n(Utilize a senha cadastrada para entrar)`
+      `💈 *Líder Barbers — Acesso do Barbeiro*\n\nOlá ${barberName}! Seu acesso ao portal e aplicativo foi configurado.\n\n📲 *Abra no seu celular para baixar o app e acessar sua agenda:*\n${appUrl}\n\n🔑 *Seu Login:* ${acc.email || 'Seu e-mail'}\n(Utilize a senha cadastrada para entrar)`
     );
     const phone = acc.phone ? acc.phone.replace(/\D/g, '') : '';
     const waUrl = phone ? `https://wa.me/55${phone}?text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
@@ -126,7 +166,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
   const handleShareBarberClientLink = (acc: BarberAccount) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const clientUrl = `${origin}/agendar?barbeiro=${acc.barber_id}`;
-    const barberName = acc.nickname || acc.barber_name?.split(' ')[0] || 'Barbeiro';
+    const barberName = acc.barber_name || acc.name || acc.nickname || 'Barbeiro';
     const text = encodeURIComponent(
       `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente comigo pelo link abaixo:\n🔗 ${clientUrl}`
     );
@@ -359,237 +399,288 @@ export const AdminBarberAccountsTab: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {accounts.map((acc) => (
-            <div
-              key={acc.barber_id}
-              className="rounded-xl border border-[#212636] bg-[#13151f] p-3.5 sm:p-4 space-y-3 hover:border-[#d4af37]/40 transition group"
-            >
-              {/* Top row */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#1a1d29] border border-[#2f3547] flex items-center justify-center text-[#d4af37] shrink-0 font-black font-cinzel text-sm">
-                    {acc.barber_name?.charAt(0) || 'B'}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {accounts.map((acc) => {
+            const barberObj = allBarbers.find((b) => b.id === acc.barber_id || b.id === acc.id);
+            const barberName = acc.barber_name || acc.name || barberObj?.name || 'Barbeiro';
+            const barberNickname = acc.nickname || acc.barber_nickname || barberObj?.nickname || '';
+            const barberPhoto = acc.photo_url || barberObj?.photo_url || '';
+            const firstName = barberName.split(' ')[0] || 'Barbeiro';
+            const hasAccount = Boolean(acc.has_account || acc.has_login || acc.user_id);
+            const isOwnerOrAdmin = acc.barber_id === 'user-admin' || barberObj?.specialties?.includes('Admin');
+            const clientBookingUrl = `${window.location.origin}/agendar?barbeiro=${acc.barber_id}`;
+            const barberAppUrl = `${window.location.origin}/barbeiro`;
+
+            return (
+              <div
+                key={acc.barber_id}
+                className="rounded-xl border border-[#212636] bg-[#13151f] p-3.5 sm:p-4 space-y-3.5 hover:border-[#d4af37]/40 transition group shadow-lg"
+              >
+                {/* Top row */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    {barberPhoto ? (
+                      <img
+                        src={barberPhoto}
+                        alt={barberName}
+                        referrerPolicy="no-referrer"
+                        className="w-12 h-12 rounded-xl object-cover border border-[#2f3547] shrink-0 shadow-md"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1a1d29] to-[#252a3b] border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shrink-0 font-black font-cinzel text-lg shadow-inner">
+                        {barberName.charAt(0) || 'B'}
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="text-sm sm:text-base font-black text-white group-hover:text-[#f5d77f] transition">
+                          {barberName}
+                        </h4>
+                        {isOwnerOrAdmin && (
+                          <span className="rounded bg-[#d4af37]/20 border border-[#d4af37]/40 px-1.5 py-0.2 text-[9px] font-bold text-[#f5d77f]">
+                            Admin / Barbeiro
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-neutral-400 mt-0.5">
+                        {barberNickname ? (
+                          <span className="text-[#f5d77f] font-semibold">
+                            "{barberNickname}"
+                          </span>
+                        ) : (
+                          <span className="text-neutral-500 italic">Profissional</span>
+                        )}
+                        <span className="font-mono text-[9px] text-neutral-400 bg-[#161924] px-1.5 py-0.2 rounded border border-[#232838]">
+                          ID: {acc.barber_id}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-[#f5d77f] transition">
-                      {acc.barber_name}
-                    </h4>
-                    <span className="text-[10px] text-neutral-400 font-mono">
-                      {acc.nickname ? `"${acc.nickname}"` : 'Barbeiro'}
-                    </span>
+
+                  <div className="flex items-center gap-1">
+                    {hasAccount ? (
+                      acc.active !== false ? (
+                        <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                          <UserCheck className="w-3 h-3" />
+                          Ativo
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-400">
+                          <UserX className="w-3 h-3" />
+                          Inativo
+                        </span>
+                      )
+                    ) : (
+                      <span className="flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                        Sem Login
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
-                  {acc.has_account ? (
-                    acc.active !== false ? (
-                      <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-                        <UserCheck className="w-3 h-3" />
-                        Ativo
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-400">
-                        <UserX className="w-3 h-3" />
-                        Inativo
-                      </span>
-                    )
+                {/* Details */}
+                <div className="space-y-1.5 pt-1 text-xs text-neutral-300 bg-[#0e1017] p-2.5 rounded-lg border border-[#1d2230]">
+                  {hasAccount ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                        <span className="text-neutral-400 text-[11px]">E-mail de Login:</span>
+                        <strong className="text-white font-mono text-[11px] truncate">{acc.email}</strong>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Percent className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
+                        <span className="text-neutral-400 text-[11px]">Comissão por Corte:</span>
+                        <strong className="text-[#f5d77f] font-bold">{acc.commission_rate || 50}% do valor</strong>
+                      </div>
+
+                      {acc.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                          <span className="text-neutral-400 text-[11px]">WhatsApp / Contato:</span>
+                          <span className="text-neutral-300 text-[11px]">{acc.phone}</span>
+                        </div>
+                      )}
+                    </>
                   ) : (
-                    <span className="flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-400">
-                      Sem Login
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-amber-400/90 italic">
+                        <strong>{barberName}</strong> está na vitrine mas ainda não possui login de acesso.
+                      </p>
+                      <button
+                        onClick={() => handleOpenAccountModal(acc)}
+                        className="shrink-0 flex items-center gap-1 rounded-lg bg-[#d4af37] px-2.5 py-1 text-[10px] font-bold text-[#0d0e11] hover:brightness-110 transition cursor-pointer"
+                      >
+                        <Key className="w-3 h-3" />
+                        <span>Criar Login</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Links Exclusivos do Barbeiro (App & Clientes) */}
+                <div className="rounded-xl border border-[#232838] bg-[#0c0d14] p-3 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-[#1b1f2e] pb-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#f5d77f] flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-[#d4af37]" />
+                      Links Exclusivos: <strong className="text-white">{barberName}</strong>
                     </span>
+                    <span className="text-[9px] text-neutral-400">App da Equipe & Clientes</span>
+                  </div>
+
+                  {/* 1. Link do App do Barbeiro */}
+                  <div className="rounded-lg bg-[#141724] border border-[#202538] p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                        1. App de {firstName} (Para ele acessar / baixar)
+                      </span>
+                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.2 rounded">
+                        /barbeiro
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-neutral-400">
+                      Envie este link para <strong>{barberName}</strong> entrar no portal e adicionar o app na tela inicial do celular.
+                    </p>
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(barberAppUrl, `app-${acc.barber_id}`, `Link do App de ${firstName}`)}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-[#1c2032] border border-[#2c334d] text-[11px] font-bold text-neutral-200 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
+                      >
+                        {copiedKey === `app-${acc.barber_id}` ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-neutral-400" />
+                            <span>Copiar Link do App</span>
+                          </>
+                        )}
+                      </button>
+
+                      {hasAccount && (
+                        <button
+                          type="button"
+                          onClick={() => handleShareBarberApp(acc)}
+                          className="flex items-center justify-center gap-1 py-1.5 px-3 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 hover:bg-emerald-600/30 transition cursor-pointer"
+                          title={`Enviar acesso via WhatsApp para ${barberName}`}
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Link Exclusivo para Clientes */}
+                  <div className="rounded-lg bg-[#141724] border border-[#d4af37]/30 p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-[#f5d77f] flex items-center gap-1.5">
+                        <Scissors className="w-3.5 h-3.5 text-[#d4af37]" />
+                        2. Link para Clientes (Cai direto com {firstName})
+                      </span>
+                      <span className="text-[9px] font-mono text-[#f5d77f] bg-[#d4af37]/15 border border-[#d4af37]/40 px-1.5 py-0.2 rounded font-bold">
+                        Pré-selecionado
+                      </span>
+                    </div>
+
+                    <div className="flex items-center bg-[#0d0e14] border border-[#272c3d] rounded-lg px-2.5 py-1 text-[10px] text-[#f5d77f] font-mono truncate">
+                      {clientBookingUrl}
+                    </div>
+
+                    <p className="text-[10px] text-neutral-400">
+                      <strong>{barberName}</strong> envia aos clientes. Ao abrir, ele já vem selecionado automaticamente para o agendamento!
+                    </p>
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(clientBookingUrl, `client-${acc.barber_id}`, `Link de Clientes de ${firstName}`)}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-[#1c2032] border border-[#2c334d] text-[11px] font-bold text-neutral-200 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
+                      >
+                        {copiedKey === `client-${acc.barber_id}` ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-[#d4af37]" />
+                            <span>Copiar Link de Clientes</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleShareBarberClientLink(acc)}
+                        className="flex items-center justify-center gap-1 py-1.5 px-3 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 hover:bg-emerald-600/30 transition cursor-pointer"
+                        title={`Compartilhar agendamento de ${barberName} no WhatsApp`}
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </button>
+
+                      <a
+                        href={`/agendar?barbeiro=${acc.barber_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg bg-[#181a26] border border-[#292e42] text-[11px] font-semibold text-neutral-400 hover:text-white transition cursor-pointer"
+                        title={`Testar link de agendamento de ${barberName}`}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-[#d4af37]" />
+                        <span>Testar</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[#1e2332]">
+                  {hasAccount ? (
+                    <>
+                      <button
+                        onClick={() => handleOpenAccountModal(acc)}
+                        className="flex items-center gap-1 rounded-lg border border-[#2b3145] bg-[#181a26] px-2.5 py-1 text-[11px] font-semibold text-neutral-300 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3 text-[#d4af37]" />
+                        <span>Alterar Senha / Comissão</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleToggleStatus(acc)}
+                        className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer ${
+                          acc.active !== false
+                            ? 'border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                            : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        {acc.active !== false ? 'Desativar' : 'Ativar'}
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteAccount(acc)}
+                        className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-400 hover:bg-rose-500/20 transition cursor-pointer"
+                        title="Excluir login de acesso"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenAccountModal(acc)}
+                      className="flex items-center gap-1.5 rounded-lg bg-[#d4af37] px-3 py-1.5 text-[11px] font-bold text-[#0d0e11] hover:brightness-110 transition cursor-pointer"
+                    >
+                      <Key className="w-3.5 h-3.5" />
+                      <span>Configurar Login de {firstName}</span>
+                    </button>
                   )}
                 </div>
               </div>
-
-              {/* Details */}
-              <div className="space-y-1.5 pt-1 text-xs text-neutral-300">
-                {acc.has_account ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-                      <span className="text-neutral-400 text-[11px]">Login:</span>
-                      <strong className="text-white font-mono text-[11px] truncate">{acc.email}</strong>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Percent className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
-                      <span className="text-neutral-400 text-[11px]">Comissão:</span>
-                      <strong className="text-[#f5d77f] font-bold">{acc.commission_rate || 50}% do corte</strong>
-                    </div>
-
-                    {acc.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-                        <span className="text-neutral-400 text-[11px]">Contato:</span>
-                        <span className="text-neutral-300 text-[11px]">{acc.phone}</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-[11px] text-amber-400/90 italic">
-                    Este barbeiro existe na vitrine mas ainda não possui login de acesso próprio.
-                  </p>
-                )}
-              </div>
-
-              {/* Links Exclusivos do Barbeiro (App & Clientes) */}
-              <div className="rounded-xl border border-[#232838] bg-[#0c0d14] p-3 space-y-2.5">
-                <div className="flex items-center justify-between border-b border-[#1b1f2e] pb-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#f5d77f] flex items-center gap-1">
-                    <Link2 className="w-3 h-3 text-[#d4af37]" />
-                    Links deste Barbeiro
-                  </span>
-                  <span className="text-[9px] text-neutral-400">App da Equipe & Clientes</span>
-                </div>
-
-                {/* 1. Link do App do Barbeiro */}
-                <div className="rounded-lg bg-[#141724] border border-[#202538] p-2 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
-                      <Smartphone className="w-3 h-3 text-emerald-400" />
-                      1. App do Barbeiro (Área Dele / Baixar App)
-                    </span>
-                    <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.2 rounded">
-                      /barbeiro
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-neutral-400">
-                    O barbeiro abre este link no celular para entrar na área dele e instalar o app na tela inicial.
-                  </p>
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(`${window.location.origin}/barbeiro`, `app-${acc.barber_id}`, 'Link do App do Barbeiro')}
-                      className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-[#1c2032] border border-[#2c334d] text-[11px] font-bold text-neutral-200 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
-                    >
-                      {copiedKey === `app-${acc.barber_id}` ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span className="text-emerald-400">Copiado!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3 text-neutral-400" />
-                          <span>Copiar Link do App</span>
-                        </>
-                      )}
-                    </button>
-
-                    {acc.has_account && (
-                      <button
-                        type="button"
-                        onClick={() => handleShareBarberApp(acc)}
-                        className="flex items-center justify-center gap-1 py-1 px-2.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 hover:bg-emerald-600/30 transition cursor-pointer"
-                        title="Enviar acesso completo via WhatsApp para o barbeiro"
-                      >
-                        <Share2 className="w-3 h-3" />
-                        <span>WhatsApp</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* 2. Link Exclusivo para Clientes */}
-                <div className="rounded-lg bg-[#141724] border border-[#d4af37]/30 p-2 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#f5d77f] flex items-center gap-1.5">
-                      <Scissors className="w-3 h-3 text-[#d4af37]" />
-                      2. Link para Clientes (Cai Direto com Ele)
-                    </span>
-                    <span className="text-[9px] font-mono text-[#f5d77f] bg-[#d4af37]/15 border border-[#d4af37]/40 px-1.5 py-0.2 rounded">
-                      Pré-selecionado
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-neutral-400">
-                    O barbeiro repassa aos clientes. Ao clicar, ele já vem selecionado e o cliente escolhe o horário!
-                  </p>
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(`${window.location.origin}/agendar?barbeiro=${acc.barber_id}`, `client-${acc.barber_id}`, 'Link de Clientes do Barbeiro')}
-                      className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-[#1c2032] border border-[#2c334d] text-[11px] font-bold text-neutral-200 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
-                    >
-                      {copiedKey === `client-${acc.barber_id}` ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span className="text-emerald-400">Copiado!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3 text-[#d4af37]" />
-                          <span>Copiar Link de Clientes</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleShareBarberClientLink(acc)}
-                      className="flex items-center justify-center gap-1 py-1 px-2.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 hover:bg-emerald-600/30 transition cursor-pointer"
-                      title="Compartilhar agendamento no WhatsApp"
-                    >
-                      <Share2 className="w-3 h-3" />
-                      <span>WhatsApp</span>
-                    </button>
-
-                    <a
-                      href={`/agendar?barbeiro=${acc.barber_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-[#181a26] border border-[#292e42] text-[11px] font-semibold text-neutral-400 hover:text-white transition cursor-pointer"
-                      title="Testar link de agendamento"
-                    >
-                      <ExternalLink className="w-3 h-3 text-[#d4af37]" />
-                      <span>Testar</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[#1e2332]">
-                {acc.has_account ? (
-                  <>
-                    <button
-                      onClick={() => handleOpenAccountModal(acc)}
-                      className="flex items-center gap-1 rounded-lg border border-[#2b3145] bg-[#181a26] px-2.5 py-1 text-[11px] font-semibold text-neutral-300 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
-                    >
-                      <Edit3 className="w-3 h-3 text-[#d4af37]" />
-                      <span>Alterar Senha / Comissão</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleToggleStatus(acc)}
-                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer ${
-                        acc.active !== false
-                          ? 'border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
-                          : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
-                      }`}
-                    >
-                      {acc.active !== false ? 'Desativar' : 'Ativar'}
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteAccount(acc)}
-                      className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-400 hover:bg-rose-500/20 transition cursor-pointer"
-                      title="Excluir login de acesso"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => handleOpenAccountModal(acc)}
-                    className="flex items-center gap-1.5 rounded-lg bg-[#d4af37] px-3 py-1 text-[11px] font-bold text-[#0d0e11] hover:brightness-110 transition cursor-pointer"
-                  >
-                    <Key className="w-3 h-3" />
-                    <span>Criar Login deste Barbeiro</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
