@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from '../context/RouterContext';
 import { Service, Barber, AvailabilitySlot } from '../types';
 import { fetchServices, fetchBarbers, fetchAvailability, createAppointment } from '../lib/api';
-import { saveCustomerBooking, getStoredCustomerData } from '../lib/customerStorage';
+import { saveCustomerBooking, getStoredCustomerData, saveCustomerProfile, formatPhoneBR } from '../lib/customerStorage';
 import { 
   Scissors, 
   User, 
+  Calendar,
   Calendar as CalendarIcon, 
   Clock, 
   Check, 
@@ -83,15 +84,17 @@ export const BookingFlow: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  // Customer Input State
+  // Customer Input State (Persisted across sessions)
+  const initialStoredData = getStoredCustomerData();
   const [customerName, setCustomerName] = useState<string>(() => {
-    return getStoredCustomerData().name || '';
+    return initialStoredData.name || '';
   });
   const [customerPhone, setCustomerPhone] = useState<string>(() => {
-    return getStoredCustomerData().phone || '';
+    return formatPhoneBR(initialStoredData.phone || '');
   });
   const [customerNotes, setCustomerNotes] = useState<string>('');
   const [showNotes, setShowNotes] = useState<boolean>(false);
+  const [hasAutoFilled] = useState<boolean>(() => Boolean(initialStoredData.name && initialStoredData.phone));
 
   // Flow Step: 'service' (Step 1) or 'schedule' (Step 2: date, time, customer & confirm)
   const [step, setStep] = useState<'service' | 'schedule'>('service');
@@ -107,16 +110,23 @@ export const BookingFlow: React.FC = () => {
   const [conflictMessage, setConflictMessage] = useState<string>('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Format local date string YYYY-MM-DD
+  const getLocalDateString = (d: Date = new Date()): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Next 14 days generator
   const getNextDays = () => {
     const days = [];
     const today = new Date();
     for (let i = 0; i < 14; i++) {
-      const d = new Date();
-      d.setDate(today.getDate() + i);
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
       const isSunday = d.getDay() === 0;
       days.push({
-        dateStr: d.toISOString().split('T')[0],
+        dateStr: getLocalDateString(d),
         dayOfWeek: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
         dayOfMonth: d.getDate(),
         month: d.toLocaleDateString('pt-BR', { month: 'short' }),
@@ -191,9 +201,33 @@ export const BookingFlow: React.FC = () => {
 
     try {
       const res = await fetchAvailability(serviceId, date, barberId);
-      setAvailableSlots(res.slots || []);
-      if (!res.slots || res.slots.length === 0) {
-        setSlotError('Nenhum horário disponível para esta data e profissional. Selecione outro dia.');
+      const rawSlots = res.slots || [];
+
+      // CLIENT-SIDE SAFETY FILTER:
+      // Se a data for hoje, NUNCA exibir horários que já passaram ou que vencem nos próximos 5 minutos
+      const now = new Date();
+      const todayStr = getLocalDateString(now);
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const validSlots = rawSlots.filter((slot) => {
+        if (date < todayStr) return false;
+        if (date === todayStr) {
+          const [h, m] = slot.time.split(':').map(Number);
+          const slotMins = (h || 0) * 60 + (m || 0);
+          // O horário deve ser posterior ao horário atual (+ 5 min de margem)
+          return slotMins > currentMinutes + 5;
+        }
+        return true;
+      });
+
+      setAvailableSlots(validSlots);
+
+      if (validSlots.length === 0) {
+        if (date === todayStr) {
+          setSlotError('Não há mais horários disponíveis para hoje. Todos os horários já foram preenchidos ou passaram.');
+        } else {
+          setSlotError('Nenhum horário disponível para esta data e profissional. Selecione outro dia.');
+        }
       }
     } catch (err: any) {
       setSlotError(err.message || 'Erro ao carregar horários disponíveis.');
@@ -219,11 +253,9 @@ export const BookingFlow: React.FC = () => {
 
   // Phone input mask (BR format: (XX) XXXXX-XXXX)
   const handlePhoneChange = (val: string) => {
-    const raw = val.replace(/\D/g, '');
-    let masked = raw;
-    if (raw.length > 2) masked = `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
-    if (raw.length > 7) masked = `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7, 11)}`;
+    const masked = formatPhoneBR(val);
     setCustomerPhone(masked);
+    saveCustomerProfile({ name: customerName, phone: masked });
   };
 
   // Submit appointment with Anti-Duplicate protection
@@ -237,6 +269,25 @@ export const BookingFlow: React.FC = () => {
       setSubmitError('Por favor, toque em um dos horários disponíveis acima.');
       return;
     }
+
+    // Client-side validation: past date or past time check
+    const now = new Date();
+    const todayStr = getLocalDateString(now);
+    if (selectedDate < todayStr) {
+      setSubmitError('Não é possível realizar agendamento para uma data que já passou.');
+      return;
+    }
+    if (selectedDate === todayStr) {
+      const [h, m] = selectedTime.split(':').map(Number);
+      const slotMins = (h || 0) * 60 + (m || 0);
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      if (slotMins <= currentMins) {
+        setSubmitError(`O horário das ${selectedTime} já passou. Por favor, escolha outro horário na lista.`);
+        loadSlots(selectedService.id, selectedDate, selectedBarberId);
+        return;
+      }
+    }
+
     if (!customerName.trim() || customerName.trim().length < 2) {
       setSubmitError('Por favor, digite seu nome completo.');
       return;
@@ -261,7 +312,11 @@ export const BookingFlow: React.FC = () => {
         notes: customerNotes.trim() || undefined,
       });
 
-      // Save booking in customer local history & storage
+      // Save customer profile permanently and booking in local history
+      saveCustomerProfile({
+        name: customerName.trim(),
+        phone: customerPhone.trim(),
+      });
       saveCustomerBooking({
         code: apt.code,
         phone: customerPhone.trim(),
@@ -586,13 +641,21 @@ export const BookingFlow: React.FC = () => {
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#d4af37] border-t-transparent mx-auto" />
                   <p className="text-[11px] text-neutral-400">Verificando horários em tempo real...</p>
                 </div>
-              ) : slotError ? (
-                <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-center">
-                  <p className="text-xs text-amber-300">{slotError}</p>
-                </div>
-              ) : availableSlots.length === 0 ? (
-                <div className="rounded-lg bg-[#161822] border border-[#262a39] p-4 text-center">
-                  <p className="text-xs text-neutral-400">Nenhum horário livre nesta data. Tente selecionar outro dia acima.</p>
+              ) : slotError || availableSlots.length === 0 ? (
+                <div className="rounded-xl bg-[#161822] border border-[#262a39] p-4 text-center space-y-2.5">
+                  <p className="text-xs text-neutral-300">
+                    {slotError || 'Nenhum horário disponível para esta data e profissional.'}
+                  </p>
+                  {selectedDate === nextDays[0]?.dateStr && nextDays[1] && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(nextDays[1].dateStr)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#d4af37]/50 bg-[#d4af37]/10 text-xs font-bold text-[#f5d77f] hover:bg-[#d4af37]/20 transition cursor-pointer"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Ver Horários de Amanhã ({nextDays[1].dayOfMonth} {nextDays[1].month})</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
@@ -619,10 +682,23 @@ export const BookingFlow: React.FC = () => {
 
             {/* Sub-Card 4: Quick Customer Contact (Just 2 Fields) */}
             <div className="rounded-xl border border-[#232733] bg-[#12141c] p-3.5 space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#d4af37]" />
-                <span>Seus Dados para o Voucher:</span>
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-[#d4af37]" />
+                  <span>Seus Dados para o Voucher:</span>
+                </span>
+                {hasAutoFilled && customerName && customerPhone && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-full shrink-0">
+                    <Check className="w-3 h-3 text-emerald-400" /> Salvo anteriormente
+                  </span>
+                )}
+              </div>
+
+              {hasAutoFilled && customerName && customerPhone && (
+                <div className="rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/25 px-2.5 py-1.5 flex items-center justify-between text-[11px] text-[#f5d77f]">
+                  <span>Seus dados foram preenchidos automaticamente para agilizar seu agendamento.</span>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
@@ -633,7 +709,14 @@ export const BookingFlow: React.FC = () => {
                     type="text"
                     required
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomerName(val);
+                      saveCustomerProfile({ name: val, phone: customerPhone });
+                    }}
+                    onBlur={() => {
+                      saveCustomerProfile({ name: customerName, phone: customerPhone });
+                    }}
                     placeholder="Ex: João da Silva"
                     className="w-full rounded-xl border border-[#282d3d] bg-[#171923] px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
                   />
@@ -648,6 +731,9 @@ export const BookingFlow: React.FC = () => {
                     required
                     value={customerPhone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
+                    onBlur={() => {
+                      saveCustomerProfile({ name: customerName, phone: customerPhone });
+                    }}
                     placeholder="(11) 98765-4321"
                     className="w-full rounded-xl border border-[#282d3d] bg-[#171923] px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
                   />

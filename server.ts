@@ -473,6 +473,31 @@ function minutesToTime(m: number): string {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
+// Helper to get current Brazil date (YYYY-MM-DD) and current minutes of day
+function getBrazilDateTime() {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(now);
+  const getVal = (t: string) => parts.find(p => p.type === t)?.value || '';
+  const y = getVal('year');
+  const m = getVal('month');
+  const d = getVal('day');
+  const h = parseInt(getVal('hour'), 10) || 0;
+  const min = parseInt(getVal('minute'), 10) || 0;
+  return {
+    dateStr: `${y}-${m}-${d}`,
+    currentMinutes: h * 60 + min
+  };
+}
+
 // Generate slot times for a given day, barber, and service
 function calculateAvailableSlots(barberId: string, serviceDuration: number, dateStr: string) {
   // Parse day of week from dateStr (YYYY-MM-DD)
@@ -517,16 +542,18 @@ function calculateAvailableSlots(barberId: string, serviceDuration: number, date
   const step = 30; // 30 minute grid
   const slots: string[] = [];
 
-  // If date is today, check current time to exclude past hours
-  const now = new Date();
-  const isToday = now.toISOString().split('T')[0] === dateStr;
-  const currentMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : -1;
+  // If date is today, check current time to exclude past hours (using Brazil timezone)
+  const { dateStr: todayBrazil, currentMinutes } = getBrazilDateTime();
+  if (dateStr < todayBrazil) {
+    return [];
+  }
+  const isToday = dateStr === todayBrazil;
 
   for (let slot = startMins; slot + serviceDuration <= endMins; slot += step) {
     const slotEnd = slot + serviceDuration;
 
-    // Past time check (today)
-    if (isToday && slot <= currentMinutes + 15) {
+    // Past time check (today: exclude past hours + 10 min buffer)
+    if (isToday && slot <= currentMinutes + 10) {
       continue;
     }
 
@@ -833,6 +860,21 @@ app.post('/api/appointments', async (req, res) => {
   // Mutex lock to guarantee atomic concurrency check
   appointmentLock = appointmentLock.then(async () => {
     try {
+      // Validate past dates/times using Brazil timezone
+      const { dateStr: todayBrazil, currentMinutes } = getBrazilDateTime();
+      if (date < todayBrazil) {
+        return res.status(400).json({
+          error: 'DATA_PASSADA',
+          message: 'Não é possível realizar agendamento para uma data que já passou.'
+        });
+      }
+      if (date === todayBrazil && timeToMinutes(start_time) <= currentMinutes) {
+        return res.status(400).json({
+          error: 'HORARIO_PASSADO',
+          message: 'Este horário já passou. Por favor, selecione um horário futuro disponível.'
+        });
+      }
+
       const service = db.services.find(s => s.id === service_id);
       if (!service) {
         return res.status(400).json({ error: 'Serviço não encontrado' });

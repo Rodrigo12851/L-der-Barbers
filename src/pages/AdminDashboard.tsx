@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from '../context/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -14,7 +14,8 @@ import {
   fetchBarbers,
   createBarber,
   updateBarber,
-  fetchAdminMetrics
+  fetchAdminMetrics,
+  subscribeToAppointments
 } from '../lib/api';
 import { 
   DollarSign, 
@@ -136,8 +137,11 @@ export const AdminDashboard: React.FC = () => {
     }
   }, [user, authLoading]);
 
-  const loadAll = async () => {
-    setLoading(true);
+  const knownAptIdsRef = useRef<Set<string>>(new Set());
+  const isInitialLoadRef = useRef<boolean>(true);
+
+  const loadAll = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [met, apts, srvs, brbs] = await Promise.all([
         fetchAdminMetrics(),
@@ -149,18 +153,62 @@ export const AdminDashboard: React.FC = () => {
       setAppointments(apts);
       setServices(srvs);
       setBarbers(brbs);
+      knownAptIdsRef.current = new Set(apts.map(a => a.id));
+      isInitialLoadRef.current = false;
     } catch (e) {
       console.error('Error loading admin data', e);
-      showToast('Erro ao carregar dados do painel', 'error');
+      if (!silent) showToast('Erro ao carregar dados do painel', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'owner') {
-      loadAll();
+    if (user?.role !== 'admin' && user?.role !== 'owner') return;
+
+    // 1. Initial Load
+    loadAll(false);
+
+    // 2. Real-time Firestore subscription
+    let unsub: (() => void) | null = null;
+    try {
+      unsub = subscribeToAppointments(
+        undefined,
+        (realtimeApts) => {
+          setAppointments(realtimeApts);
+          fetchAdminMetrics().then(setMetrics).catch(() => {});
+        },
+        (err) => {
+          console.warn('Realtime subscription notice in Admin:', err);
+        }
+      );
+    } catch (e) {
+      console.warn('Could not start admin real-time listener:', e);
     }
+
+    // 3. Resilient Polling every 8 seconds
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadAll(true);
+      }
+    }, 8000);
+
+    // 4. Focus / visibility change
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadAll(true);
+      }
+    };
+
+    window.addEventListener('focus', handleVisibility);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      if (unsub) unsub();
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleVisibility);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [user]);
 
   // Appointment status update
@@ -387,8 +435,15 @@ export const AdminDashboard: React.FC = () => {
               </button>
             )}
 
+            {/* Realtime Live Indicator */}
+            <div className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1.5 text-[11px] font-bold text-emerald-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="hidden sm:inline">Tempo Real</span>
+              <span className="sm:hidden">Ao Vivo</span>
+            </div>
+
             <button
-              onClick={loadAll}
+              onClick={() => loadAll(false)}
               className="flex items-center gap-1.5 rounded-xl border border-[#2c3243] bg-[#161822] px-3 py-1.5 text-xs font-semibold text-neutral-300 hover:text-white cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#d4af37] ${loading ? 'animate-spin' : ''}`} />

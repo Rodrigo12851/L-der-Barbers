@@ -8,7 +8,8 @@ import {
   deleteDoc,
   query,
   where,
-  writeBatch
+  writeBatch,
+  onSnapshot
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import {
@@ -285,14 +286,23 @@ export async function deleteBarberTimeOffFS(id: string): Promise<void> {
 
 // ---------------- AVAILABILITY CALCULATION ----------------
 function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
   const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
+  return (h || 0) * 60 + (m || 0);
 }
 
 function minutesToTime(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// Get current date string in local/Brazil format YYYY-MM-DD
+function getLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export async function getAvailabilityFS(
@@ -306,13 +316,23 @@ export async function getAvailabilityFS(
   if (!service) throw new Error('Serviço não encontrado');
 
   const barbers = await getBarbersFS(false);
-  let targetBarbers = barbers;
-  if (barberId) {
-    targetBarbers = barbers.filter(b => b.id === barberId);
+  let targetBarbers = barbers.filter(b => b.active);
+  if (barberId && barberId !== 'any') {
+    targetBarbers = barbers.filter(b => b.id === barberId && b.active);
   }
   if (targetBarbers.length === 0) {
     return { slots: [], service, barber: null };
   }
+
+  // Check if requested date is in the past
+  const now = new Date();
+  const todayStr = getLocalDateString(now);
+  if (date < todayStr) {
+    return { slots: [], service, barber: barberId && barberId !== 'any' ? targetBarbers[0] || null : null };
+  }
+
+  const isToday = date === todayStr;
+  const currentMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : -1;
 
   const selectedDate = new Date(date + 'T12:00:00');
   const dayOfWeek = selectedDate.getDay();
@@ -327,9 +347,10 @@ export async function getAvailabilityFS(
   const appointmentsSnap = await getDocs(
     query(collection(db, 'appointments'), where('date', '==', date))
   );
+  // Any appointment not cancelled is active and blocks the time
   const existingAppts = appointmentsSnap.docs
-    .map(d => d.data() as Appointment)
-    .filter(a => a.status === 'confirmed');
+    .map(d => ({ id: d.id, ...d.data() } as Appointment))
+    .filter(a => a.status !== 'cancelled');
 
   const slotMap = new Map<string, AvailabilitySlot>();
 
@@ -351,14 +372,19 @@ export async function getAvailabilityFS(
     for (let cur = startMins; cur + duration <= endMins; cur += step) {
       const slotEnd = cur + duration;
 
-      // Check break
+      // 1. Descartar horários passados para o dia de hoje (+ 10 minutos de margem)
+      if (isToday && cur <= currentMinutes + 10) {
+        continue;
+      }
+
+      // 2. Check break / lunch interval
       if (breakStartMins !== null && breakEndMins !== null) {
         if (!(slotEnd <= breakStartMins || cur >= breakEndMins)) {
           continue;
         }
       }
 
-      // Check time off partial
+      // 3. Check time off partial
       const partialOff = allTimeOff.find(
         t => t.barber_id === barber.id && t.date === date && !t.full_day && t.start_time && t.end_time
       );
@@ -370,7 +396,7 @@ export async function getAvailabilityFS(
         }
       }
 
-      // Check existing appointments
+      // 4. Check existing appointments conflict (same barber)
       const conflict = existingAppts.some(a => {
         if (a.barber_id !== barber.id) return false;
         const apptStart = timeToMinutes(a.start_time);
@@ -380,7 +406,7 @@ export async function getAvailabilityFS(
 
       if (!conflict) {
         const timeStr = minutesToTime(cur);
-        const slotKey = barberId ? `${timeStr}-${barber.id}` : timeStr;
+        const slotKey = barberId && barberId !== 'any' ? `${timeStr}-${barber.id}` : timeStr;
         if (!slotMap.has(slotKey)) {
           slotMap.set(slotKey, {
             time: timeStr,
@@ -399,7 +425,7 @@ export async function getAvailabilityFS(
   return {
     slots: sortedSlots,
     service,
-    barber: barberId ? targetBarbers[0] || null : null,
+    barber: barberId && barberId !== 'any' ? targetBarbers[0] || null : null,
   };
 }
 
@@ -416,40 +442,108 @@ export async function createAppointmentFS(payload: {
 }): Promise<Appointment> {
   const path = 'appointments';
   try {
+    // 1. Validação de horário no passado
+    const now = new Date();
+    const todayStr = getLocalDateString(now);
+    const startMins = timeToMinutes(payload.start_time);
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    if (payload.date < todayStr) {
+      throw new Error('Não é possível realizar agendamento para uma data que já passou.');
+    }
+    if (payload.date === todayStr && startMins <= currentMins) {
+      throw new Error('Este horário já passou. Por favor, escolha um horário futuro.');
+    }
+
     const services = await getServicesFS(true);
     const service = services.find(s => s.id === payload.service_id);
     if (!service) throw new Error('Serviço selecionado não encontrado');
 
-    const barbers = await getBarbersFS(false);
-    let chosenBarber = barbers.find(b => b.id === payload.barber_id);
-    if (!chosenBarber && barbers.length > 0) {
-      chosenBarber = barbers[0];
-    }
-    if (!chosenBarber) throw new Error('Barbeiro não disponível');
-
-    const startMins = timeToMinutes(payload.start_time);
     const endMins = startMins + service.duration_minutes;
     const endTime = minutesToTime(endMins);
 
-    // Verify conflicts
+    const barbers = await getBarbersFS(false);
+    const activeBarbers = barbers.filter(b => b.active);
+
+    // Carregar agendamentos existentes na data para verificar conflitos
     const existingSnap = await getDocs(
-      query(
-        collection(db, 'appointments'),
-        where('barber_id', '==', chosenBarber.id),
-        where('date', '==', payload.date)
-      )
+      query(collection(db, 'appointments'), where('date', '==', payload.date))
     );
-    const hasConflict = existingSnap.docs
-      .map(d => d.data() as Appointment)
-      .some(a => {
-        if (a.status !== 'confirmed') return false;
+    const existingAppts = existingSnap.docs
+      .map(d => ({ id: d.id, ...d.data() } as Appointment))
+      .filter(a => a.status !== 'cancelled');
+
+    // Carregar folgas na data
+    const allTimeOffSnap = await getDocs(collection(db, 'barber_time_off'));
+    const allTimeOff = allTimeOffSnap.docs
+      .map(d => d.data() as BarberTimeOff)
+      .filter(t => t.date === payload.date);
+
+    // Carregar grades
+    const selectedDateObj = new Date(payload.date + 'T12:00:00');
+    const dayOfWeek = selectedDateObj.getDay();
+    const allSchedulesSnap = await getDocs(collection(db, 'barber_schedules'));
+    const allSchedules = allSchedulesSnap.docs.map(d => d.data() as BarberSchedule);
+
+    let chosenBarber: Barber | undefined;
+
+    if (payload.barber_id && payload.barber_id !== 'any') {
+      chosenBarber = activeBarbers.find(b => b.id === payload.barber_id);
+      if (!chosenBarber) throw new Error('Barbeiro selecionado não está disponível.');
+
+      // Verificar se este barbeiro já tem agendamento ativo neste horário
+      const hasConflict = existingAppts.some(a => {
+        if (a.barber_id !== chosenBarber!.id) return false;
         const aStart = timeToMinutes(a.start_time);
         const aEnd = timeToMinutes(a.end_time);
         return !(endMins <= aStart || startMins >= aEnd);
       });
 
-    if (hasConflict) {
-      throw new Error('Este horário acabou de ser preenchido. Por favor, escolha outro horário.');
+      if (hasConflict) {
+        throw new Error(`O horário das ${payload.start_time} com ${chosenBarber.nickname || chosenBarber.name} já foi reservado. Por favor, escolha outro horário disponível.`);
+      }
+    } else {
+      // "Qualquer Barbeiro": encontrar um barbeiro ativo que esteja REALMENTE livre neste horário
+      for (const b of activeBarbers) {
+        const sched = allSchedules.find(s => s.barber_id === b.id && s.day_of_week === dayOfWeek);
+        if (!sched || !sched.active) continue;
+
+        const bStart = timeToMinutes(sched.start_time);
+        const bEnd = timeToMinutes(sched.end_time);
+        if (startMins < bStart || endMins > bEnd) continue;
+
+        if (sched.break_start && sched.break_end) {
+          const brkStart = timeToMinutes(sched.break_start);
+          const brkEnd = timeToMinutes(sched.break_end);
+          if (!(endMins <= brkStart || startMins >= brkEnd)) continue;
+        }
+
+        const isOff = allTimeOff.some(t => t.barber_id === b.id && t.full_day);
+        if (isOff) continue;
+
+        const partialOff = allTimeOff.find(t => t.barber_id === b.id && !t.full_day && t.start_time && t.end_time);
+        if (partialOff) {
+          const offStart = timeToMinutes(partialOff.start_time!);
+          const offEnd = timeToMinutes(partialOff.end_time!);
+          if (!(endMins <= offStart || startMins >= offEnd)) continue;
+        }
+
+        const hasConflict = existingAppts.some(a => {
+          if (a.barber_id !== b.id) return false;
+          const aStart = timeToMinutes(a.start_time);
+          const aEnd = timeToMinutes(a.end_time);
+          return !(endMins <= aStart || startMins >= aEnd);
+        });
+
+        if (!hasConflict) {
+          chosenBarber = b;
+          break;
+        }
+      }
+
+      if (!chosenBarber) {
+        throw new Error(`Nenhum barbeiro está disponível no horário das ${payload.start_time} nesta data. Por favor, selecione outro horário.`);
+      }
     }
 
     const code = 'LIB-' + Math.floor(1000 + Math.random() * 9000);
@@ -586,6 +680,42 @@ export async function getAppointmentsFS(filters?: {
     return items.sort((a, b) => `${b.date} ${b.start_time}`.localeCompare(`${a.date} ${a.start_time}`));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
+  }
+}
+
+export function subscribeToAppointmentsFS(
+  filters: { barberId?: string; date?: string; status?: string } | undefined,
+  callback: (appointments: Appointment[]) => void,
+  onError?: (err: any) => void
+): () => void {
+  const path = 'appointments';
+  try {
+    const unsub = onSnapshot(
+      collection(db, path),
+      (snap) => {
+        let items = snap.docs.map(d => ({ id: d.id, ...d.data() } as Appointment));
+        if (filters?.barberId) {
+          items = items.filter(a => a.barber_id === filters.barberId);
+        }
+        if (filters?.date) {
+          items = items.filter(a => a.date === filters.date);
+        }
+        if (filters?.status) {
+          items = items.filter(a => a.status === filters.status);
+        }
+        items.sort((a, b) => `${b.date} ${b.start_time}`.localeCompare(`${a.date} ${a.start_time}`));
+        callback(items);
+      },
+      (error) => {
+        console.warn('Firestore real-time subscription error:', error);
+        if (onError) onError(error);
+      }
+    );
+    return unsub;
+  } catch (err) {
+    console.warn('Error starting Firestore onSnapshot:', err);
+    if (onError) onError(err);
+    return () => {};
   }
 }
 

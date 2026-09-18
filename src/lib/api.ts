@@ -333,6 +333,14 @@ export async function fetchAppointments(filters?: {
   );
 }
 
+export function subscribeToAppointments(
+  filters: { barberId?: string; date?: string; status?: string } | undefined,
+  callback: (appointments: Appointment[]) => void,
+  onError?: (err: any) => void
+): () => void {
+  return FS.subscribeToAppointmentsFS(filters, callback, onError);
+}
+
 export async function updateAppointmentStatus(id: string, status: string): Promise<void> {
   return tryFirestoreOrApi(
     () => FS.updateAppointmentStatusFS(id, status),

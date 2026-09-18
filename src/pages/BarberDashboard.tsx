@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from '../context/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { Appointment, BarberSchedule, BarberTimeOff, Barber } from '../types';
@@ -10,7 +10,8 @@ import {
   fetchBarberTimeOff, 
   addBarberTimeOff, 
   deleteBarberTimeOff,
-  fetchBarbers
+  fetchBarbers,
+  subscribeToAppointments
 } from '../lib/api';
 import { 
   Calendar, 
@@ -128,31 +129,142 @@ export const BarberDashboard: React.FC = () => {
     }
   }, [user]);
 
+  // Web Audio chime for incoming appointments
+  const playAppointmentChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+
+      // Tone 1: C5 (523Hz)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(523.25, now);
+      gain1.gain.setValueAtTime(0.2, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.5);
+
+      // Tone 2: G5 (784Hz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(783.99, now + 0.14);
+      gain2.gain.setValueAtTime(0.25, now + 0.14);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.14);
+      osc2.stop(now + 0.85);
+    } catch (e) {
+      // ignore audio autoplay restriction
+    }
+  };
+
+  const knownAptIdsRef = useRef<Set<string>>(new Set());
+  const isInitialLoadRef = useRef<boolean>(true);
+
+  // Incoming appointments processor: detects brand new appointments in real-time
+  const handleIncomingAppointments = (incomingApts: Appointment[]) => {
+    if (!isInitialLoadRef.current && incomingApts.length > 0) {
+      const newBookings = incomingApts.filter(
+        a => !knownAptIdsRef.current.has(a.id) && (a.status === 'confirmed' || !a.status)
+      );
+
+      if (newBookings.length > 0) {
+        playAppointmentChime();
+        const first = newBookings[0];
+        showToast(
+          `🔔 Novo agendamento: ${first.customer_name} às ${first.start_time} (${first.date})!`,
+          'success'
+        );
+      }
+    }
+
+    knownAptIdsRef.current = new Set(incomingApts.map(a => a.id));
+    setAppointments(incomingApts);
+    isInitialLoadRef.current = false;
+  };
+
   // Load appointments, schedules, and time offs whenever selectedBarberId changes
-  const loadBarberData = async () => {
+  const loadBarberData = async (silent = false) => {
     if (!selectedBarberId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const [apts, scheds, offs] = await Promise.all([
         fetchAppointments({ barberId: selectedBarberId }),
         fetchBarberSchedules(selectedBarberId),
         fetchBarberTimeOff(selectedBarberId),
       ]);
-      setAppointments(apts);
+      handleIncomingAppointments(apts);
       setSchedules(scheds);
       setTimeOffs(offs);
     } catch (e) {
       console.error('Error loading barber dashboard data', e);
-      showToast('Erro ao carregar dados do barbeiro.', 'error');
+      if (!silent) showToast('Erro ao carregar dados do barbeiro.', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
+  // Real-time synchronization + polling + focus listener
   useEffect(() => {
-    if (selectedBarberId) {
-      loadBarberData();
+    if (!selectedBarberId) return;
+
+    // Reset initial load tracking for new barber selection
+    isInitialLoadRef.current = true;
+    knownAptIdsRef.current = new Set();
+
+    // 1. Initial Load
+    loadBarberData(false);
+
+    // 2. Real-time Firestore Subscription (instant updates!)
+    let unsub: (() => void) | null = null;
+    try {
+      unsub = subscribeToAppointments(
+        { barberId: selectedBarberId },
+        (realtimeApts) => {
+          handleIncomingAppointments(realtimeApts);
+        },
+        (err) => {
+          console.warn('Real-time listener notice:', err);
+        }
+      );
+    } catch (e) {
+      console.warn('Could not init realtime listener, fallback to polling:', e);
     }
+
+    // 3. Resilient Polling every 7 seconds for continuous sync even if connection drops
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchAppointments({ barberId: selectedBarberId })
+          .then(apts => handleIncomingAppointments(apts))
+          .catch(() => {});
+      }
+    }, 7000);
+
+    // 4. Instant sync when the barber unlocks phone or switches back to tab
+    const handleFocusOrVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAppointments({ barberId: selectedBarberId })
+          .then(apts => handleIncomingAppointments(apts))
+          .catch(() => {});
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      if (unsub) unsub();
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
   }, [selectedBarberId]);
 
   // Update appointment status handler
@@ -325,10 +437,17 @@ export const BarberDashboard: React.FC = () => {
               </div>
             )}
 
+            {/* Realtime Live Indicator */}
+            <div className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-2 text-[11px] font-bold text-emerald-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="hidden xs:inline">Tempo Real</span>
+              <span className="xs:hidden">Ao Vivo</span>
+            </div>
+
             <button
-              onClick={loadBarberData}
+              onClick={() => loadBarberData(false)}
               className="flex items-center gap-1.5 rounded-xl border border-[#2c3243] bg-[#161822] px-3.5 py-2 text-xs font-semibold text-neutral-300 hover:text-white cursor-pointer"
-              title="Atualizar dados"
+              title="Atualizar dados manualmente"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#d4af37] ${loading ? 'animate-spin' : ''}`} />
               <span>Atualizar</span>

@@ -90,6 +90,29 @@ export function clearStoredCustomerData() {
   }
 }
 
+export function formatPhoneBR(val: string): string {
+  const raw = (val || '').replace(/\D/g, '');
+  if (!raw) return '';
+  if (raw.length <= 2) return `(${raw}`;
+  if (raw.length <= 7) return `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+  return `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7, 11)}`;
+}
+
+export function saveCustomerProfile(data: { name?: string; phone?: string }) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (data.name && data.name.trim()) {
+      localStorage.setItem(STORAGE_KEYS.NAME, data.name.trim());
+    }
+    if (data.phone && data.phone.trim()) {
+      const formatted = formatPhoneBR(data.phone.trim());
+      localStorage.setItem(STORAGE_KEYS.PHONE, formatted);
+    }
+  } catch (e) {
+    console.warn('Error saving customer profile to storage:', e);
+  }
+}
+
 export function cleanPhoneNumber(val: string): string {
   return (val || '').replace(/\D/g, '');
 }
