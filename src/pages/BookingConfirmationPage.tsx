@@ -3,6 +3,7 @@ import { useRouter } from '../context/RouterContext';
 import { useSettings } from '../context/SettingsContext';
 import { Appointment } from '../types';
 import { fetchAppointmentByCode, cancelAppointmentByCode } from '../lib/api';
+import { saveCustomerBooking } from '../lib/customerStorage';
 import { 
   CheckCircle2, 
   Calendar, 
@@ -15,7 +16,9 @@ import {
   AlertTriangle,
   ArrowLeft,
   QrCode,
-  Search
+  Search,
+  History,
+  ArrowRight
 } from 'lucide-react';
 
 export const BookingConfirmationPage: React.FC = () => {
@@ -54,6 +57,14 @@ export const BookingConfirmationPage: React.FC = () => {
     try {
       const data = await fetchAppointmentByCode(code);
       setAppointment(data);
+      if (data && data.code) {
+        saveCustomerBooking({
+          code: data.code,
+          phone: data.customer_phone || '',
+          name: data.customer_name || '',
+          appointment: data,
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Agendamento não encontrado com o código fornecido.');
       setAppointment(null);
@@ -366,22 +377,54 @@ export const BookingConfirmationPage: React.FC = () => {
 
             </div>
 
+            {/* Quick Access to Customer History & Appointments */}
+            <div className="rounded-2xl border border-[#d4af37]/30 bg-gradient-to-r from-[#171924] via-[#151722] to-[#12141c] p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center gap-3.5 text-left">
+                <div className="w-10 h-10 rounded-xl bg-[#1c1f2e] border border-[#d4af37]/40 flex items-center justify-center shrink-0 text-[#d4af37]">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-white font-cinzel">Meus Agendamentos & Histórico</h4>
+                  <p className="text-xs text-neutral-400">
+                    Acompanhe todos os seus horários marcados e cortes anteriores na barbearia.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate('/meus-agendamentos')}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#1f2230] border border-[#d4af37]/50 px-4 py-2.5 text-xs font-bold text-[#f5d77f] hover:bg-[#d4af37] hover:text-[#0d0e11] transition shadow-md shrink-0 cursor-pointer"
+              >
+                <span>Ver Todos os Meus Horários</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Back or new booking */}
-            <div className="flex justify-center gap-4 pt-2">
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="flex items-center gap-2 rounded-xl border border-[#2e3344] bg-[#14161f] px-5 py-2.5 text-xs font-bold text-neutral-300 hover:text-white cursor-pointer"
+                className="flex items-center gap-2 rounded-xl border border-[#2e3344] bg-[#14161f] px-4 py-2.5 text-xs font-bold text-neutral-300 hover:text-white cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Voltar ao Início</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/agendar')}
-                className="flex items-center gap-2 rounded-xl bg-[#d4af37] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 shadow-md cursor-pointer"
+                onClick={() => navigate('/meus-agendamentos')}
+                className="flex items-center gap-2 rounded-xl border border-[#d4af37]/40 bg-[#161924] px-4 py-2.5 text-xs font-bold text-[#f5d77f] hover:border-[#d4af37] cursor-pointer"
               >
-                <span>Fazer Outro Agendamento</span>
+                <History className="w-4 h-4 text-[#d4af37]" />
+                <span>Histórico & Agendados</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/agendar')}
+                className="flex items-center gap-2 rounded-xl bg-[#d4af37] px-5 py-2.5 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 shadow-md cursor-pointer"
+              >
+                <span>Novo Agendamento</span>
               </button>
             </div>
 

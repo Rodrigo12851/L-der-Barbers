@@ -926,6 +926,54 @@ app.post('/api/appointments', async (req, res) => {
   await appointmentLock;
 });
 
+// Get appointments for a customer by phone and/or list of codes
+app.get('/api/appointments/customer', (req, res) => {
+  const phoneParam = (req.query.phone as string) || '';
+  const codesParam = (req.query.codes as string) || '';
+
+  const cleanQueryPhone = phoneParam.replace(/\D/g, '');
+  const targetCodes = codesParam
+    .split(',')
+    .map(c => c.trim().toUpperCase())
+    .filter(Boolean);
+
+  if (!cleanQueryPhone && targetCodes.length === 0) {
+    return res.json([]);
+  }
+
+  const matched = db.appointments.filter(a => {
+    // Check code match
+    if (a.code && targetCodes.includes(a.code.toUpperCase())) {
+      return true;
+    }
+
+    // Check phone match
+    if (cleanQueryPhone && cleanQueryPhone.length >= 8 && a.customer_phone) {
+      const aptPhone = a.customer_phone.replace(/\D/g, '');
+      if (aptPhone === cleanQueryPhone) return true;
+      if (aptPhone.endsWith(cleanQueryPhone) || cleanQueryPhone.endsWith(aptPhone)) return true;
+    }
+
+    return false;
+  });
+
+  // Hydrate services and barbers
+  const hydrated = matched.map(apt => {
+    const service = db.services.find(s => s.id === apt.service_id);
+    const barber = db.barbers.find(b => b.id === apt.barber_id);
+    return { ...apt, service, barber };
+  });
+
+  // Sort: future/newest first
+  hydrated.sort((a, b) => {
+    const dateComp = (b.date || '').localeCompare(a.date || '');
+    if (dateComp !== 0) return dateComp;
+    return (b.start_time || '').localeCompare(a.start_time || '');
+  });
+
+  res.json(hydrated);
+});
+
 // Get appointment by unique confirmation code
 app.get('/api/appointments/code/:code', (req, res) => {
   const apt = db.appointments.find(a => a.code.toUpperCase() === req.params.code.toUpperCase());

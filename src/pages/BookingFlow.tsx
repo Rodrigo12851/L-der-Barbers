@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from '../context/RouterContext';
 import { Service, Barber, AvailabilitySlot } from '../types';
 import { fetchServices, fetchBarbers, fetchAvailability, createAppointment } from '../lib/api';
+import { saveCustomerBooking, getStoredCustomerData } from '../lib/customerStorage';
 import { 
   Scissors, 
   User, 
@@ -83,8 +84,12 @@ export const BookingFlow: React.FC = () => {
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   // Customer Input State
-  const [customerName, setCustomerName] = useState<string>('');
-  const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>(() => {
+    return getStoredCustomerData().name || '';
+  });
+  const [customerPhone, setCustomerPhone] = useState<string>(() => {
+    return getStoredCustomerData().phone || '';
+  });
   const [customerNotes, setCustomerNotes] = useState<string>('');
   const [showNotes, setShowNotes] = useState<boolean>(false);
 
@@ -254,6 +259,14 @@ export const BookingFlow: React.FC = () => {
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         notes: customerNotes.trim() || undefined,
+      });
+
+      // Save booking in customer local history & storage
+      saveCustomerBooking({
+        code: apt.code,
+        phone: customerPhone.trim(),
+        name: customerName.trim(),
+        appointment: apt,
       });
 
       // Successful booking -> navigate to voucher confirmation page!

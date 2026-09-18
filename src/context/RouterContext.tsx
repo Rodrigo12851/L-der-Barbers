@@ -6,6 +6,7 @@ export type RouteName =
   | 'barbers'
   | 'booking'
   | 'booking_detail'
+  | 'my_appointments'
   | 'auth'
   | 'barber_dashboard'
   | 'admin_dashboard'
@@ -54,6 +55,15 @@ export const getRouteFromPath = (fullPath: string): RouteName => {
   }
   if (cleanPath.startsWith('/agendamento') || cleanPath.startsWith('/voucher')) {
     return 'booking_detail';
+  }
+  if (
+    cleanPath === '/meus-agendamentos' ||
+    cleanPath === '/meus-horarios' ||
+    cleanPath === '/historico' ||
+    cleanPath === '/minhas-reservas' ||
+    cleanPath === '/agendamentos'
+  ) {
+    return 'my_appointments';
   }
   if (cleanPath === '/auth' || cleanPath === '/login' || cleanPath === '/entrar') {
     return 'auth';

@@ -105,6 +105,13 @@ export const Footer: React.FC = () => {
               </button>
               <button
                 type="button"
+                onClick={() => navigate('/meus-agendamentos')}
+                className="text-left text-[#f5d77f] hover:text-[#d4af37] transition flex items-center gap-1.5 cursor-pointer font-semibold"
+              >
+                <span>→ Meus Agendamentos & Histórico</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate('/servicos')}
                 className="text-left text-neutral-300 hover:text-[#d4af37] transition flex items-center gap-1.5 cursor-pointer"
               >

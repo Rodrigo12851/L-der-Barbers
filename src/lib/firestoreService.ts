@@ -504,6 +504,56 @@ export async function cancelAppointmentByCodeFS(code: string): Promise<void> {
   }
 }
 
+export async function getCustomerAppointmentsFS(params: {
+  phone?: string;
+  codes?: string[];
+}): Promise<Appointment[]> {
+  await ensureFirestoreSeeded();
+  const path = 'appointments';
+  try {
+    const snap = await getDocs(collection(db, path));
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Appointment));
+
+    const cleanQueryPhone = (params.phone || '').replace(/\D/g, '');
+    const targetCodes = (params.codes || []).map(c => c.trim().toUpperCase()).filter(Boolean);
+
+    if (!cleanQueryPhone && targetCodes.length === 0) {
+      return [];
+    }
+
+    const matched = all.filter(a => {
+      if (a.code && targetCodes.includes(a.code.toUpperCase())) return true;
+      if (cleanQueryPhone && cleanQueryPhone.length >= 8 && a.customer_phone) {
+        const aptPhone = a.customer_phone.replace(/\D/g, '');
+        if (aptPhone === cleanQueryPhone) return true;
+        if (aptPhone.endsWith(cleanQueryPhone) || cleanQueryPhone.endsWith(aptPhone)) return true;
+      }
+      return false;
+    });
+
+    const [services, barbers] = await Promise.all([
+      getServicesFS(false),
+      getBarbersFS(false),
+    ]);
+
+    const hydrated = matched.map(apt => {
+      const service = services.find(s => s.id === apt.service_id);
+      const barber = barbers.find(b => b.id === apt.barber_id);
+      return { ...apt, service, barber };
+    });
+
+    hydrated.sort((a, b) => {
+      const dateComp = (b.date || '').localeCompare(a.date || '');
+      if (dateComp !== 0) return dateComp;
+      return (b.start_time || '').localeCompare(a.start_time || '');
+    });
+
+    return hydrated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+  }
+}
+
 export async function getAppointmentsFS(filters?: {
   barberId?: string;
   date?: string;

@@ -16,7 +16,8 @@ import {
   Clock,
   MapPin,
   Phone,
-  Key
+  Key,
+  CalendarCheck
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -38,6 +39,7 @@ export const Header: React.FC = () => {
     { label: 'Início', href: '/', icon: Home },
     { label: 'Serviços', href: '/servicos', icon: Scissors },
     { label: 'Equipe', href: '/equipe', icon: User },
+    { label: 'Meus Agendamentos', href: '/meus-agendamentos', icon: CalendarCheck },
     { label: 'Agendar Horário', href: '/agendar', icon: Calendar, highlight: true },
   ];
 

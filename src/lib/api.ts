@@ -289,6 +289,26 @@ export async function cancelAppointmentByCode(code: string): Promise<void> {
   );
 }
 
+export async function fetchCustomerAppointments(params: {
+  phone?: string;
+  codes?: string[];
+}): Promise<Appointment[]> {
+  return tryFirestoreOrApi(
+    () => FS.getCustomerAppointmentsFS(params),
+    async () => {
+      const queryParams = new URLSearchParams();
+      if (params.phone) queryParams.set('phone', params.phone);
+      if (params.codes && params.codes.length > 0) queryParams.set('codes', params.codes.join(','));
+
+      const res = await fetch(`/api/appointments/customer?${queryParams.toString()}`);
+      if (!res.ok) {
+        throw new Error('Erro ao carregar agendamentos do cliente');
+      }
+      return res.json();
+    }
+  );
+}
+
 export async function fetchAppointments(filters?: {
   barberId?: string;
   date?: string;

@@ -11,6 +11,7 @@ import { ServicesPage } from './pages/ServicesPage';
 import { BarbersPage } from './pages/BarbersPage';
 import { BookingFlow } from './pages/BookingFlow';
 import { BookingConfirmationPage } from './pages/BookingConfirmationPage';
+import { MyAppointmentsPage } from './pages/MyAppointmentsPage';
 import { AuthPage } from './pages/AuthPage';
 import { BarberDashboard } from './pages/BarberDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -48,6 +49,8 @@ const AppContent: React.FC = () => {
         return <BookingFlow />;
       case 'booking_detail':
         return <BookingConfirmationPage />;
+      case 'my_appointments':
+        return <MyAppointmentsPage />;
       case 'auth':
         return <AuthPage />;
       case 'barber_dashboard':
