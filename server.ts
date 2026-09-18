@@ -500,9 +500,9 @@ function getBrazilDateTime() {
 
 // Generate slot times for a given day, barber, and service
 function calculateAvailableSlots(barberId: string, serviceDuration: number, dateStr: string) {
-  // Parse day of week from dateStr (YYYY-MM-DD)
+  // Parse day of week from dateStr (YYYY-MM-DD) with midday hour to prevent timezone shift
   const [y, m, d] = dateStr.split('-').map(Number);
-  const targetDate = new Date(y, m - 1, d);
+  const targetDate = new Date(y, m - 1, d, 12, 0, 0);
   const dayOfWeek = targetDate.getDay(); // 0 = Domingo, 1 = Segunda, ...
 
   // Resolve actual barberId (in case admin user id or alias was passed)

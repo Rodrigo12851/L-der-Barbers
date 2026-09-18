@@ -297,12 +297,41 @@ function minutesToTime(mins: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+// Get current date and minutes in Brazil timezone (America/Sao_Paulo)
+export function getBrazilDateTime(): { dateStr: string; currentMinutes: number; timeStr: string } {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(now);
+  const getVal = (t: string) => parts.find(p => p.type === t)?.value || '';
+  const y = getVal('year');
+  const m = getVal('month');
+  const d = getVal('day');
+  const h = parseInt(getVal('hour'), 10) || 0;
+  const min = parseInt(getVal('minute'), 10) || 0;
+  return {
+    dateStr: `${y}-${m}-${d}`,
+    currentMinutes: h * 60 + min,
+    timeStr: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+  };
+}
+
 // Get current date string in local/Brazil format YYYY-MM-DD
 function getLocalDateString(d: Date = new Date()): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(d);
 }
 
 export async function getAvailabilityFS(
@@ -318,21 +347,19 @@ export async function getAvailabilityFS(
   const barbers = await getBarbersFS(false);
   let targetBarbers = barbers.filter(b => b.active);
   if (barberId && barberId !== 'any') {
-    targetBarbers = barbers.filter(b => b.id === barberId && b.active);
+    targetBarbers = barbers.filter(b => (b.id === barberId || (b as any).user_id === barberId) && b.active);
   }
   if (targetBarbers.length === 0) {
     return { slots: [], service, barber: null };
   }
 
-  // Check if requested date is in the past
-  const now = new Date();
-  const todayStr = getLocalDateString(now);
-  if (date < todayStr) {
+  // Obter data e minutos no fuso horário do Brasil
+  const { dateStr: todayBrazil, currentMinutes } = getBrazilDateTime();
+  if (date < todayBrazil) {
     return { slots: [], service, barber: barberId && barberId !== 'any' ? targetBarbers[0] || null : null };
   }
 
-  const isToday = date === todayStr;
-  const currentMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : -1;
+  const isToday = date === todayBrazil;
 
   const selectedDate = new Date(date + 'T12:00:00');
   const dayOfWeek = selectedDate.getDay();
@@ -442,17 +469,15 @@ export async function createAppointmentFS(payload: {
 }): Promise<Appointment> {
   const path = 'appointments';
   try {
-    // 1. Validação de horário no passado
-    const now = new Date();
-    const todayStr = getLocalDateString(now);
+    // 1. Validação de horário no passado (Fuso Horário do Brasil)
+    const { dateStr: todayBrazil, currentMinutes } = getBrazilDateTime();
     const startMins = timeToMinutes(payload.start_time);
-    const currentMins = now.getHours() * 60 + now.getMinutes();
 
-    if (payload.date < todayStr) {
+    if (payload.date < todayBrazil) {
       throw new Error('Não é possível realizar agendamento para uma data que já passou.');
     }
-    if (payload.date === todayStr && startMins <= currentMins) {
-      throw new Error('Este horário já passou. Por favor, escolha um horário futuro.');
+    if (payload.date === todayBrazil && startMins <= currentMinutes) {
+      throw new Error('Este horário já passou. Por favor, escolha um horário futuro disponível.');
     }
 
     const services = await getServicesFS(true);

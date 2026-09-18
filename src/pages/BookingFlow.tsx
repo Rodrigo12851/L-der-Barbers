@@ -110,23 +110,48 @@ export const BookingFlow: React.FC = () => {
   const [conflictMessage, setConflictMessage] = useState<string>('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Format local date string YYYY-MM-DD
-  const getLocalDateString = (d: Date = new Date()): string => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  // Get current date and minutes in Brazil timezone (America/Sao_Paulo)
+  const getBrazilDateTime = (): { dateStr: string; currentMinutes: number; timeStr: string } => {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    const getVal = (t: string) => parts.find(p => p.type === t)?.value || '';
+    const y = getVal('year');
+    const m = getVal('month');
+    const d = getVal('day');
+    const h = parseInt(getVal('hour'), 10) || 0;
+    const min = parseInt(getVal('minute'), 10) || 0;
+    return {
+      dateStr: `${y}-${m}-${d}`,
+      currentMinutes: h * 60 + min,
+      timeStr: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+    };
   };
 
-  // Next 14 days generator
+  // Next 14 days generator based on Brazil official date
   const getNextDays = () => {
     const days = [];
-    const today = new Date();
+    const bNow = getBrazilDateTime();
+    const [by, bm, bd] = bNow.dateStr.split('-').map(Number);
+
     for (let i = 0; i < 14; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+      const d = new Date(by, bm - 1, bd + i, 12, 0, 0);
       const isSunday = d.getDay() === 0;
+      const yStr = d.getFullYear();
+      const mStr = String(d.getMonth() + 1).padStart(2, '0');
+      const dStr = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${yStr}-${mStr}-${dStr}`;
+
       days.push({
-        dateStr: getLocalDateString(d),
+        dateStr,
         dayOfWeek: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
         dayOfMonth: d.getDate(),
         month: d.toLocaleDateString('pt-BR', { month: 'short' }),
@@ -202,28 +227,35 @@ export const BookingFlow: React.FC = () => {
     try {
       const res = await fetchAvailability(serviceId, date, barberId);
       const rawSlots = res.slots || [];
+      const bNow = getBrazilDateTime();
+      const isToday = date === nextDays[0]?.dateStr || date === bNow.dateStr;
 
-      // CLIENT-SIDE SAFETY FILTER:
-      // Se a data for hoje, NUNCA exibir horários que já passaram ou que vencem nos próximos 5 minutos
-      const now = new Date();
-      const todayStr = getLocalDateString(now);
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const validSlots: AvailabilitySlot[] = [];
+      for (const item of rawSlots) {
+        const timeStr = typeof item === 'string' ? item : item?.time;
+        if (!timeStr) continue;
 
-      const validSlots = rawSlots.filter((slot) => {
-        if (date < todayStr) return false;
-        if (date === todayStr) {
-          const [h, m] = slot.time.split(':').map(Number);
+        // CLIENT-SIDE SAFETY FILTER:
+        // Se a data for hoje, NUNCA permitir horários que já passaram
+        if (isToday) {
+          const [h, m] = timeStr.split(':').map(Number);
           const slotMins = (h || 0) * 60 + (m || 0);
-          // O horário deve ser posterior ao horário atual (+ 5 min de margem)
-          return slotMins > currentMinutes + 5;
+          if (slotMins <= bNow.currentMinutes) {
+            continue; // Horário já passou!
+          }
         }
-        return true;
-      });
+
+        validSlots.push({
+          time: timeStr,
+          available: true,
+          barber_id: typeof item === 'object' && item?.barber_id ? item.barber_id : barberId,
+        });
+      }
 
       setAvailableSlots(validSlots);
 
       if (validSlots.length === 0) {
-        if (date === todayStr) {
+        if (isToday) {
           setSlotError('Não há mais horários disponíveis para hoje. Todos os horários já foram preenchidos ou passaram.');
         } else {
           setSlotError('Nenhum horário disponível para esta data e profissional. Selecione outro dia.');
@@ -270,19 +302,19 @@ export const BookingFlow: React.FC = () => {
       return;
     }
 
-    // Client-side validation: past date or past time check
-    const now = new Date();
-    const todayStr = getLocalDateString(now);
-    if (selectedDate < todayStr) {
+    // Client-side validation: past date or past time check using Brazil timezone
+    const bNow = getBrazilDateTime();
+    const isToday = selectedDate === nextDays[0]?.dateStr || selectedDate === bNow.dateStr;
+
+    if (selectedDate < bNow.dateStr) {
       setSubmitError('Não é possível realizar agendamento para uma data que já passou.');
       return;
     }
-    if (selectedDate === todayStr) {
+    if (isToday) {
       const [h, m] = selectedTime.split(':').map(Number);
       const slotMins = (h || 0) * 60 + (m || 0);
-      const currentMins = now.getHours() * 60 + now.getMinutes();
-      if (slotMins <= currentMins) {
-        setSubmitError(`O horário das ${selectedTime} já passou. Por favor, escolha outro horário na lista.`);
+      if (slotMins <= bNow.currentMinutes) {
+        setSubmitError(`O horário das ${selectedTime} já passou (agora são ${bNow.timeStr}). Por favor, escolha outro horário na lista.`);
         loadSlots(selectedService.id, selectedDate, selectedBarberId);
         return;
       }
@@ -636,48 +668,78 @@ export const BookingFlow: React.FC = () => {
                 )}
               </div>
 
-              {loadingSlots ? (
-                <div className="py-6 text-center space-y-2">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#d4af37] border-t-transparent mx-auto" />
-                  <p className="text-[11px] text-neutral-400">Verificando horários em tempo real...</p>
-                </div>
-              ) : slotError || availableSlots.length === 0 ? (
-                <div className="rounded-xl bg-[#161822] border border-[#262a39] p-4 text-center space-y-2.5">
-                  <p className="text-xs text-neutral-300">
-                    {slotError || 'Nenhum horário disponível para esta data e profissional.'}
-                  </p>
-                  {selectedDate === nextDays[0]?.dateStr && nextDays[1] && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDate(nextDays[1].dateStr)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#d4af37]/50 bg-[#d4af37]/10 text-xs font-bold text-[#f5d77f] hover:bg-[#d4af37]/20 transition cursor-pointer"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>Ver Horários de Amanhã ({nextDays[1].dayOfMonth} {nextDays[1].month})</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {availableSlots.map((slot) => {
-                    const isSelected = selectedTime === slot.time;
-                    return (
-                      <button
-                        key={slot.time}
-                        type="button"
-                        onClick={() => setSelectedTime(slot.time)}
-                        className={`rounded-xl py-2 px-1 text-center font-bold text-xs transition border cursor-pointer ${
-                          isSelected
-                            ? 'border-[#d4af37] bg-[#d4af37] text-[#0d0e11] shadow-md shadow-[#d4af37]/30 scale-[1.03]'
-                            : 'border-[#232733] bg-[#171923] text-neutral-200 hover:border-[#d4af37]/50 hover:bg-[#1f2230]'
-                        }`}
-                      >
-                        {slot.time}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              {(() => {
+                const bNow = getBrazilDateTime();
+                const isSelectedDateToday = selectedDate === nextDays[0]?.dateStr || selectedDate === bNow.dateStr;
+
+                // Filtragem estrita e infalível de exibição
+                const visibleSlots = availableSlots.filter((slot) => {
+                  const t = typeof slot === 'string' ? slot : slot?.time;
+                  if (!t) return false;
+                  if (isSelectedDateToday) {
+                    const [h, m] = t.split(':').map(Number);
+                    const slotMins = (h || 0) * 60 + (m || 0);
+                    if (slotMins <= bNow.currentMinutes) {
+                      return false; // Horário já passou hoje no Brasil
+                    }
+                  }
+                  return true;
+                });
+
+                if (loadingSlots) {
+                  return (
+                    <div className="py-6 text-center space-y-2">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#d4af37] border-t-transparent mx-auto" />
+                      <p className="text-[11px] text-neutral-400">Verificando horários em tempo real...</p>
+                    </div>
+                  );
+                }
+
+                if (slotError || visibleSlots.length === 0) {
+                  return (
+                    <div className="rounded-xl bg-[#161822] border border-[#262a39] p-4 text-center space-y-2.5">
+                      <p className="text-xs text-neutral-300">
+                        {isSelectedDateToday
+                          ? 'Não há mais horários disponíveis para hoje. Todos os horários já passaram ou foram preenchidos.'
+                          : slotError || 'Nenhum horário disponível para esta data e profissional.'}
+                      </p>
+                      {isSelectedDateToday && nextDays[1] && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDate(nextDays[1].dateStr)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#d4af37]/50 bg-[#d4af37]/10 text-xs font-bold text-[#f5d77f] hover:bg-[#d4af37]/20 transition cursor-pointer"
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>Ver Horários de Amanhã ({nextDays[1].dayOfMonth} {nextDays[1].month})</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    {visibleSlots.map((slot) => {
+                      const timeStr = typeof slot === 'string' ? slot : slot.time;
+                      const isSelected = selectedTime === timeStr;
+                      return (
+                        <button
+                          key={timeStr}
+                          type="button"
+                          onClick={() => setSelectedTime(timeStr)}
+                          className={`rounded-xl py-2 px-1 text-center font-bold text-xs transition border cursor-pointer ${
+                            isSelected
+                              ? 'border-[#d4af37] bg-[#d4af37] text-[#0d0e11] shadow-md shadow-[#d4af37]/30 scale-[1.03]'
+                              : 'border-[#232733] bg-[#171923] text-neutral-200 hover:border-[#d4af37]/50 hover:bg-[#1f2230]'
+                          }`}
+                        >
+                          {timeStr}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Sub-Card 4: Quick Customer Contact (Just 2 Fields) */}
