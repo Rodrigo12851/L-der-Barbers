@@ -17,6 +17,56 @@ import {
   Zap
 } from 'lucide-react';
 
+function normalizeString(val: string): string {
+  return (val || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function findBarberByQuery(barbers: Barber[], queryParam: string | null): Barber | null {
+  if (!queryParam) return null;
+  let cleanParam = queryParam.trim();
+  try {
+    cleanParam = decodeURIComponent(cleanParam);
+  } catch (e) {
+    // fallback to raw
+  }
+  cleanParam = cleanParam.replace(/\+/g, ' ').trim();
+  const normParam = normalizeString(cleanParam);
+  if (!normParam) return null;
+
+  return (
+    barbers.find((b) => {
+      const bId = b.id.toLowerCase();
+      const bNameNorm = normalizeString(b.name);
+      const bNickNorm = b.nickname ? normalizeString(b.nickname) : '';
+      const bFirstNameNorm = normalizeString((b.name || '').split(' ')[0]);
+
+      // 1. Full name match (accent and case insensitive) e.g. "André Santana" matches "andre santana"
+      if (bNameNorm === normParam) return true;
+
+      // 2. Nickname match e.g. "Mestre Valente" or "Diego Navalha"
+      if (bNickNorm && bNickNorm === normParam) return true;
+
+      // 3. ID match (e.g. barber-3, barber-1) for complete backwards compatibility
+      if (bId === normParam || b.id === cleanParam || (b as any).user_id === cleanParam) return true;
+
+      // 4. First name match (e.g. "André" or "Diego")
+      if (bFirstNameNorm && bFirstNameNorm === normParam) return true;
+
+      // 5. Partial / Substring match if >= 3 characters (e.g. "André Santana" contains "Santana" or "André")
+      if (normParam.length >= 3 && (bNameNorm.includes(normParam) || normParam.includes(bNameNorm))) return true;
+
+      // 6. Admin fallback
+      if (normParam.includes('admin') && (bId.includes('admin') || bNameNorm.includes('admin') || bNickNorm.includes('admin'))) return true;
+
+      return false;
+    }) || null
+  );
+}
+
 export const BookingFlow: React.FC = () => {
   const { navigate, searchParams, path } = useRouter();
 
@@ -91,21 +141,10 @@ export const BookingFlow: React.FC = () => {
         const srvParam = searchParams.get('service') || searchParams.get('servico');
         const brbParam = searchParams.get('barbeiro') || searchParams.get('barber');
 
-        let directBrb: Barber | null = null;
-        if (brbParam) {
-          const lowerParam = brbParam.toLowerCase().trim();
-          directBrb = brbs.find((b) => 
-            b.id.toLowerCase() === lowerParam || 
-            (b as any).user_id === brbParam ||
-            b.name.toLowerCase().trim() === lowerParam ||
-            (b.nickname && b.nickname.toLowerCase().trim() === lowerParam) ||
-            (lowerParam.includes('admin') && (b.id.includes('admin') || b.name.toLowerCase().includes('admin') || (b.nickname && b.nickname.toLowerCase().includes('admin'))))
-          ) || null;
-
-          if (directBrb) {
-            setSelectedBarberId(directBrb.id);
-            setExclusiveBarber(directBrb);
-          }
+        const directBrb = findBarberByQuery(brbs, brbParam);
+        if (directBrb) {
+          setSelectedBarberId(directBrb.id);
+          setExclusiveBarber(directBrb);
         }
 
         if (srvParam) {
@@ -124,6 +163,19 @@ export const BookingFlow: React.FC = () => {
     }
     init();
   }, []);
+
+  // Reactive detection of barber parameter (e.g. ?barbeiro=André Santana or ?barbeiro=barber-3)
+  useEffect(() => {
+    if (barbers.length === 0) return;
+    const brbParam = searchParams.get('barbeiro') || searchParams.get('barber');
+    if (brbParam) {
+      const directBrb = findBarberByQuery(barbers, brbParam);
+      if (directBrb && (!exclusiveBarber || exclusiveBarber.id !== directBrb.id)) {
+        setSelectedBarberId(directBrb.id);
+        setExclusiveBarber(directBrb);
+      }
+    }
+  }, [barbers, searchParams]);
 
   // Fetch real-time available slots whenever service, barber, or date changes
   const loadSlots = async (serviceId: string, date: string, barberId: string) => {

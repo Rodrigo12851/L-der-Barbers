@@ -59,9 +59,11 @@ export const BarberDashboard: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
-  // Derive active barber ID for client link
+  // Derive active barber for client link
   const currentBarberId = selectedBarberId || user?.barber_id || user?.id || '';
-  const clientLink = `${window.location.origin}/agendar?barbeiro=${currentBarberId}`;
+  const currentBarber = allBarbers.find(b => b.id === currentBarberId) || user;
+  const currentBarberName = currentBarber?.name || (currentBarber as any)?.nickname || user?.name || 'Barbeiro';
+  const clientLink = `${window.location.origin}/agendar?barbeiro=${currentBarberName}`;
 
   const handleCopyClientLink = async () => {
     try {
@@ -84,10 +86,8 @@ export const BarberDashboard: React.FC = () => {
   };
 
   const handleShareClientLinkWhatsApp = () => {
-    const barber = allBarbers.find(b => b.id === currentBarberId) || user;
-    const barberName = (barber as any)?.nickname || barber?.name || 'Barbeiro';
     const text = encodeURIComponent(
-      `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente comigo pelo link abaixo:\n🔗 ${clientLink}`
+      `💈 *Agendamento Exclusivo — ${currentBarberName} | Líder Barbers*\n\nReserve seu horário diretamente com ${currentBarberName} pelo link abaixo:\n🔗 ${clientLink}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
@@ -395,7 +395,7 @@ export const BarberDashboard: React.FC = () => {
             </button>
 
             <button
-              onClick={() => navigate(`/agendar?barbeiro=${currentBarberId}`)}
+              onClick={() => navigate(`/agendar?barbeiro=${encodeURIComponent(currentBarberName)}`)}
               className="flex items-center gap-1.5 rounded-xl border border-[#2c3243] bg-[#161822] px-3 py-2 text-xs font-semibold text-neutral-300 hover:text-white cursor-pointer"
               title="Testar agendamento com este link"
             >

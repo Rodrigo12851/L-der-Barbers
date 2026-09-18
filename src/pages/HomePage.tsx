@@ -272,7 +272,7 @@ export const HomePage: React.FC = () => {
 
                   <div className="mt-6 pt-4 border-t border-[#1c202d]">
                     <button
-                      onClick={() => navigate(`/agendar?barber=${barber.id}`)}
+                      onClick={() => navigate(`/agendar?barbeiro=${encodeURIComponent(barber.name)}`)}
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa8222] py-2.5 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 active:scale-95 transition shadow-md"
                     >
                       <Calendar className="w-3.5 h-3.5" />

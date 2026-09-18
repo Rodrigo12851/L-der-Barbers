@@ -66,7 +66,9 @@ export const AdminDashboard: React.FC = () => {
 
   // Link exclusivo do Admin/Barbeiro
   const adminBarberId = user?.barber_id || user?.id || 'admin';
-  const clientLink = `${window.location.origin}/agendar?barbeiro=${adminBarberId}`;
+  const adminBarber = barbers.find(b => b.id === adminBarberId) || user;
+  const adminBarberName = adminBarber?.name || (adminBarber as any)?.nickname || user?.name || 'Administrador';
+  const clientLink = `${window.location.origin}/agendar?barbeiro=${adminBarberName}`;
 
   const handleCopyClientLink = async () => {
     try {
@@ -89,10 +91,8 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleShareClientLinkWhatsApp = () => {
-    const adminBarber = barbers.find(b => b.id === adminBarberId) || user;
-    const barberName = (adminBarber as any)?.nickname || adminBarber?.name || 'Administrador';
     const text = encodeURIComponent(
-      `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente comigo pelo link abaixo:\n🔗 ${clientLink}`
+      `💈 *Agendamento Exclusivo — ${adminBarberName} | Líder Barbers*\n\nReserve seu horário diretamente com ${adminBarberName} pelo link abaixo:\n🔗 ${clientLink}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
@@ -461,7 +461,7 @@ export const AdminDashboard: React.FC = () => {
             </button>
 
             <button
-              onClick={() => navigate(`/agendar?barbeiro=${adminBarberId}`)}
+              onClick={() => navigate(`/agendar?barbeiro=${encodeURIComponent(adminBarberName)}`)}
               className="flex items-center gap-1.5 rounded-xl border border-[#2c3243] bg-[#161822] px-3 py-2 text-xs font-semibold text-neutral-300 hover:text-white cursor-pointer"
               title="Testar agendamento com este link"
             >

@@ -94,7 +94,7 @@ export const BarbersPage: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => navigate(`/agendar?barber=${barber.id}`)}
+                      onClick={() => navigate(`/agendar?barbeiro=${encodeURIComponent(barber.name)}`)}
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa8222] py-3 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 active:scale-95 transition shadow-lg shadow-[#d4af37]/15"
                     >
                       <Calendar className="w-4 h-4" />

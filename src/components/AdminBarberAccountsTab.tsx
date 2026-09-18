@@ -165,10 +165,11 @@ export const AdminBarberAccountsTab: React.FC = () => {
 
   const handleShareBarberClientLink = (acc: BarberAccount) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const clientUrl = `${origin}/agendar?barbeiro=${acc.barber_id}`;
-    const barberName = acc.barber_name || acc.name || acc.nickname || 'Barbeiro';
+    const barberObj = allBarbers.find((b) => b.id === acc.barber_id || b.id === acc.id);
+    const barberName = acc.barber_name || acc.name || barberObj?.name || acc.nickname || 'Barbeiro';
+    const clientUrl = `${origin}/agendar?barbeiro=${barberName}`;
     const text = encodeURIComponent(
-      `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente comigo pelo link abaixo:\n🔗 ${clientUrl}`
+      `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente com ${barberName} pelo link abaixo:\n🔗 ${clientUrl}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
@@ -408,7 +409,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
             const firstName = barberName.split(' ')[0] || 'Barbeiro';
             const hasAccount = Boolean(acc.has_account || acc.has_login || acc.user_id);
             const isOwnerOrAdmin = acc.barber_id === 'user-admin' || barberObj?.specialties?.includes('Admin');
-            const clientBookingUrl = `${window.location.origin}/agendar?barbeiro=${acc.barber_id}`;
+            const clientBookingUrl = `${window.location.origin}/agendar?barbeiro=${barberName}`;
             const barberAppUrl = `${window.location.origin}/barbeiro`;
 
             return (
@@ -624,7 +625,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
                       </button>
 
                       <a
-                        href={`/agendar?barbeiro=${acc.barber_id}`}
+                        href={`/agendar?barbeiro=${encodeURIComponent(barberName)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg bg-[#181a26] border border-[#292e42] text-[11px] font-semibold text-neutral-400 hover:text-white transition cursor-pointer"

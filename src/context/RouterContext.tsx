@@ -154,7 +154,10 @@ export const RouterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [path]);
 
   const searchParams = useMemo(() => {
-    const queryPart = path.includes('?') ? path.slice(path.indexOf('?')) : '';
+    let queryPart = path.includes('?') ? path.slice(path.indexOf('?')) : '';
+    if (!queryPart && typeof window !== 'undefined' && window.location.search) {
+      queryPart = window.location.search;
+    }
     return new URLSearchParams(queryPart);
   }, [path]);
 
