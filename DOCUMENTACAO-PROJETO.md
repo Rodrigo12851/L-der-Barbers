@@ -53,37 +53,40 @@ O arquivo `/data/db.json` centraliza o estado do sistema:
 | `barber_schedules` | Grade semanal de atendimento de cada barbeiro | `id`, `barber_id`, `day_of_week` (0 a 6), `start_time`, `end_time`, `break_start`, `break_end`, `active` |
 | `barber_time_off` | Bloqueios e folgas pontuais | `id`, `barber_id`, `date` (YYYY-MM-DD), `reason`, `full_day`, `start_time`, `end_time` |
 | `appointments` | Agendamentos registrados | `id`, `code` (ex: LIB-1234), `service_id`, `barber_id`, `customer_name`, `customer_phone`, `customer_email`, `notes`, `date`, `start_time`, `end_time`, `price`, `status` (`confirmed`, `completed`, `no_show`, `cancelled`), `created_at` |
-| `users` | Contas de acesso autenticadas | `id`, `email`, `password`, `name`, `role` (`owner`, `admin`, `barber`), `phone`, `active`, `barber_id`, `commission_rate`, `created_at` |
+| `users` | Contas de acesso autenticadas no Firebase Auth | `id` (UID do Firebase Auth), `email`, `name`, `role` (`owner`, `admin`, `barber`), `phone`, `active`, `barber_id`, `commission_rate`, `created_at` *(senhas gerenciadas exclusivamente via hash criptográfico no Firebase Authentication; senhas em texto puro foram 100% removidas)* |
 
 ---
 
-## 4. Matriz de Perfis e Permissões (RBAC)
+## 4. Matriz de Perfis e Permissões (RBAC & Firebase Authentication)
+
+A autenticação do sistema é gerenciada diretamente pelo **Firebase Authentication**, garantindo armazenamento seguro com hash criptográfico, controle de sessão resiliente e isolamento por regras de segurança no Firestore (`firestore.rules`).
 
 ### 4.1 Proprietário Geral (`owner`)
 - **Rotas de Acesso**: `/proprietario`, `/app-dono`, `/dono`.
-- **Credenciais Iniciais Padrão**:
-  - E-mail principal: `dono@liderbarbers.com.br` (também aceita `allinesoares050@gmail.com` ou `dono`)
-  - Senha: `dono`
+- **Fluxo de Ativação do Primeiro Acesso**:
+  - No primeiro uso da aplicação, o sistema detecta automaticamente se o proprietário já foi configurado.
+  - Caso não tenha sido configurado, o formulário de **Configuração Inicial do Proprietário** é exibido para criação segura da conta mestre (Nome, E-mail, Telefone e Senha com no mínimo 6 dígitos).
+  - A conta mestre é provisionada com perfil `owner` no Firebase Authentication e registrada no documento de perfil do Firestore.
 - **Recurso de Visualização**: Todos os campos de senha possuem botão com ícone de olho (`Eye`/`EyeOff`) para exibir ou ocultar os caracteres digitados.
 - **Atribuições**:
   - Visão macro de faturamento bruto e líquido consolidado de toda a rede.
-  - Cadastro, edição de dados, redefinição de senha e inativação de contas de **Administradores**.
+  - Cadastro, edição de dados, redefinição de senha e inativação de contas de **Administradores** via Firebase Auth (usando app secundário efêmero para não desconectar a sessão do dono).
   - Central de Links para envio de acessos da equipe via WhatsApp ou cópia direta.
   - Instalação e gestão do PWA exclusivo de Dono.
 
 ### 4.2 Administrador da Barbearia (`admin`)
 - **Rotas de Acesso**: `/admin`, `/app-admin`.
-- **Credenciais Iniciais Padrão**: `admin@liberdade.com.br` / `admin`.
+- **Criação de Conta**: Conta criada diretamente pelo Proprietário no painel de Dono com e-mail e senha cadastrados no Firebase Authentication.
 - **Atribuições**:
-  - O Administrador também é um profissional barbeiro na unidade (`barber_id` correspondente), atendendo clientes e possuindo seu próprio link direto de agendamento (`/agendar?barbeiro=user-admin`).
-  - Gestão dos barbeiros da unidade: criação de conta de acesso, ajuste de percentual de comissão (%), horários de atendimento e folgas.
+  - O Administrador também pode atuar como profissional barbeiro na unidade (`barber_id` correspondente).
+  - Gestão dos barbeiros da unidade: criação de contas de acesso (com geração de credenciais no Firebase Auth), horários de atendimento e folgas.
   - Gestão de serviços: criação, alteração de valores, duração e fotos/ícones.
-  - Relatório de comissões por período (Hoje, Esta Semana, Este Mês) e exportação de dados.
+  - Relatório financeiro por período (Hoje, Esta Semana, Este Mês) e exportação de dados.
   - Gestão da agenda geral com filtros de status (`confirmed`, `completed`, `no_show`, `cancelled`).
 
 ### 4.3 Barbeiro (`barber`)
 - **Rotas de Acesso**: `/barbeiro`, `/portal-barbeiro`, `/app-barbeiro`.
-- **Credenciais de Teste**: `marcos@liberdade.com.br` / `barber`, `diego@liberdade.com.br` / `barber`, `andre@liberdade.com.br` / `barber`.
+- **Criação de Conta**: Conta criada pelo Administrador ou Proprietário com e-mail e senha cadastrados no Firebase Authentication.
 - **Os 2 Links Exclusivos de Cada Barbeiro**:
   1. **Link do App do Barbeiro** (`/barbeiro`): Link do portal exclusivo para o barbeiro abrir no celular, fazer login na sua conta pessoal e instalar o aplicativo PWA direto na tela inicial.
   2. **Link Direto para Clientes** (`/agendar?barbeiro=[ID]`): Link exclusivo que o barbeiro envia aos seus clientes (no WhatsApp, Instagram, bio). Ao clicar, o cliente já cai diretamente no fluxo de agendamento com o banner VIP do profissional e ele já vem **100% pré-selecionado**, pulando a escolha de barbeiro.
@@ -92,7 +95,7 @@ O arquivo `/data/db.json` centraliza o estado do sistema:
   - **No Painel do Próprio Barbeiro** (`/barbeiro`): O barbeiro visualiza o card de instalação do seu app no topo e o banner com seu link exclusivo de clientes com botões de *Copiar*, *WhatsApp* e *Testar*.
 - **Atribuições**:
   - Acesso restrito à sua própria agenda e métricas pessoais.
-  - Acompanhamento de comissões líquidas calculadas automaticamente a cada corte concluído.
+  - Acompanhamento de faturamento líquido calculado automaticamente a cada corte concluído.
   - Instalação do app dedicado na tela inicial do celular.
 
 ### 4.4 Cliente (`customer`)
@@ -242,6 +245,7 @@ O arquivo `/data/db.json` centraliza o estado do sistema:
 
 | Data (UTC/Local) | Autor | Descrição da Alteração | Módulos Impactados |
 | :--- | :--- | :--- | :--- |
+| **2026-09-19** | IA Assistant | **Blindagem de Segurança e Migração Definitiva para Firebase Authentication**: Resolução rigorosa das falhas de segurança e exposição de dados no Firestore: (1) **Reescrita e Deploy das Regras de Segurança (`firestore.rules`)**: Implementação de controle de acesso refinado por perfil. Coleções públicas (`settings`, `services`, `barbers`) possuem leitura aberta para clientes, porém escrita estritamente restrita a usuários autenticados com papel `admin` ou `owner`. A coleção `appointments` permite leitura e criação de agendamentos por clientes (com validação do próprio telefone) e edição restrita à equipe autenticada. A coleção `users` foi blindada para impedir leitura pública de dados internos ou alteração não autorizada de perfis; (2) **Eliminação Total de Senhas em Texto Puro**: Expurgados todos os campos `password` de documentos do Firestore, esquemas do `firebase-blueprint.json` e arquivo local `data/db.json`; (3) **Migração Completa para Firebase Authentication**: As funções de autenticação (`loginFS`, `createAdminAccountFS`, `createBarberAccountFS`, `updateBarberAccountFS`) foram migradas para o SDK oficial do Firebase Authentication (`signInWithEmailAndPassword`, `createUserWithEmailAndPassword`). A criação de contas secundárias para administradores e barbeiros utiliza instâncias secundárias efêmeras do Firebase App para não desconectar a sessão do usuário ativo; (4) **Fluxo de Ativação do Primeiro Acesso do Dono**: Criação das rotinas `checkNeedsOwnerSetup` e `setupOwner` (`/api/auth/needs-owner-setup` e `/api/auth/setup-owner`), permitindo ao proprietário configurar sua conta mestre no primeiro uso sem depender de senhas padrão vulneráveis; (5) **Limpeza Visual de Credenciais Hardcoded**: Remoção de botões de "Preencher dados" e senhas expostas em `DedicatedRolePortalLogin.tsx` e `AuthPage.tsx`. | `firestore.rules`, `src/lib/firestoreService.ts`, `src/context/AuthContext.tsx`, `src/components/DedicatedRolePortalLogin.tsx`, `src/pages/AuthPage.tsx`, `server.ts`, `src/lib/api.ts`, `data/db.json`, `firebase-blueprint.json`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-18** | IA Assistant | **Correção de Contraste e Legibilidade do Modo Claro (PRD de Correção Visual)**: Resolução definitiva dos problemas de texto branco/invisível no Modo Claro (Light Mode): (1) **Ativação da Variante de Classe Dark no Tailwind v4 (`@custom-variant dark (&:where(.dark, .dark *));`)**: Anteriormente, as classes com prefixo `dark:` estavam ativando via `@media (prefers-color-scheme: dark)` quando o dispositivo do usuário estava configurado para tema escuro no sistema operacional, aplicando classes de texto claro mesmo com o site em Modo Claro. Com a nova diretiva de variante por classe, as regras `dark:` são executadas exclusivamente quando o elemento ancestral possui a classe `.dark`; (2) **Título Principal do Hero (`HomePage.tsx`)**: O texto "A ARTE DO CORTE," foi explicitamente estilizado com `text-slate-900 dark:text-white` em grafite escuro com máximo contraste, e o gradiente de "A PRECISÃO DA NAVALHA." foi calibrado para `from-amber-600 via-amber-700 to-amber-800` no modo claro e tons dourados no `dark:`; (3) **Textos de Apoio e Parágrafos**: A descrição e citações receberam `text-slate-600 dark:text-gray-300`, e o nome da marca foi destacado com `text-slate-900 dark:text-white font-bold`; (4) **Botão Secundário "Ver Serviços & Preços"**: Reestruturado com `border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 dark:border-[#2e3344] dark:bg-[#14161f] dark:text-white shadow-sm` e ícone de seta em tom âmbar quente; (5) **Card Flutuante sobre a Imagem do Hero**: Atualizado com fundo `bg-white/95 text-slate-900 shadow-xl`, badge de experiência em `text-amber-800 dark:text-[#f5d77f] font-bold`, título "Toalha Quente & Ozonioterapia" em `text-slate-900 dark:text-white font-black` e botão dourado de alta visibilidade; (6) **Variáveis Root e Camada Global (`index.css`)**: Inclusão de variáveis `--color-text-main: #0f172a`, `--color-text-muted: #475569` sob `html.light`, regras universais para `[class*="text-white"]` mapeando para `#0f172a`, `color: transparent !important` em `bg-clip-text` e proteção rigorosa contra textos claros sobre superfícies brancas. | `src/index.css`, `src/pages/HomePage.tsx`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-18** | IA Assistant | **Otimização de Espaçamento e Unificação em Linha Única do Título da Página Inicial (`HomePage.tsx`, `PWAInstallButton.tsx`)**: Atendendo ao feedback de layout e densidade visual do usuário: (1) **Título em Linha Única ("A ARTE DO CORTE,")**: A primeira parte do título foi unificada com classe `whitespace-nowrap` e ajuste fino do tamanho de fonte responsivo (`text-[25px] xs:text-[27px] sm:text-4xl md:text-5xl lg:text-6xl`), garantindo que em qualquer celular a frase "A ARTE DO CORTE," fique integralmente em uma única linha sem quebras desnecessárias, seguida harmoniosamente da segunda linha em degradê dourado "A PRECISÃO DA NAVALHA."; (2) **Redução Drástica do Espaço em Branco (Densidade Visual Aprimorada)**: Diminuição do padding vertical do Hero (`pt-5 pb-7 sm:py-16 lg:py-20`), redução do espaçamento entre títulos, texto e botões de ação (`space-y-3.5 sm:space-y-5`, `pt-0.5`), diminuição do gap do grid mobile para 20px (`gap-5`) e limitação da altura da foto do Hero em celulares (`max-h-[350px] aspect-[4/3] sm:aspect-[4/5]`); (3) **Compactação das Seções de Serviços, Barbeiros e Rodapé**: Redução do padding superior/inferior das seções para `py-8 sm:py-16`, diminuição das margens dos cabeçalhos (`mb-6 sm:mb-10`) e dos botões de catálogo; (4) **Banner PWA Autocontido**: O componente `PWAInstallButton` agora encapsula sua própria seção e se oculta completamente sem deixar faixas vazias ou bordas órfãs quando não estiver ativo ou já instalado. | `HomePage.tsx`, `PWAInstallButton.tsx`, `DOCUMENTACAO-PROJETO.md` |
 | **2026-09-18** | IA Assistant | **Implementação do Seletor de Modo Claro e Modo Escuro (Light / Dark Mode)**: Implementação completa de alternância de tema entre Modo Escuro (identidade dourada clássica sobre fundo escuro `#0d0e11`) e Modo Claro (layout luminoso, de alto contraste `#f8fafc` / `#ffffff`, bordas sutis `#e2e8f0` e tipografia nítida `#0f172a` com acentos em ouro queimado de alta legibilidade). (1) **Contexto Global de Tema (`ThemeContext.tsx`)**: Gerencia o estado (`dark` | `light`), escuta preferências do sistema (`prefers-color-scheme`), aplica classes e atributos na raiz `document.documentElement` (`class="light"` ou `class="dark"`) e persiste a escolha no `localStorage` sob a chave `lider_barbers_theme`; (2) **Componente Seletor de Tema (`ThemeToggle.tsx`)**: Disponível em versão compacta de ícone (Sol/Lua com animação de rotação suave) e versão segmentada completa ("Modo Escuro" / "Modo Claro"); (3) **Integração nas Telas**: Presente no cabeçalho principal (`Header.tsx`), no menu lateral móvel, no rodapé (`Footer.tsx`) e nos painéis do Administrador (`AdminDashboard.tsx`), Dono (`OwnerDashboard.tsx`) e Barbeiro (`BarberDashboard.tsx`); (4) **Camada de Estilos Globais (`index.css`)**: Regras abrangentes de adaptação garantindo legibilidade perfeita, contraste WCAG AA, preservação dos botões dourados e suporte a todos os formulários, tabelas e modais. | `ThemeContext.tsx`, `ThemeToggle.tsx`, `App.tsx`, `Header.tsx`, `Footer.tsx`, `AdminDashboard.tsx`, `OwnerDashboard.tsx`, `BarberDashboard.tsx`, `index.css`, `DOCUMENTACAO-PROJETO.md` |

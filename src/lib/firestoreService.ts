@@ -11,7 +11,14 @@ import {
   writeBatch,
   onSnapshot
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase';
+import { initializeApp, deleteApp } from 'firebase/app';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
+import { db, auth, handleFirestoreError, OperationType } from './firebase';
+import firebaseConfig from '../../firebase-applet-config.json';
 import {
   Service,
   Barber,
@@ -27,6 +34,28 @@ import {
   OwnerOverviewMetrics
 } from '../types';
 import defaultDbData from '../../data/db.json';
+
+/**
+ * Creates a new user in Firebase Authentication without logging out the currently
+ * authenticated Admin or Owner user, using an ephemeral secondary Firebase App instance.
+ */
+export async function createAuthUserWithoutSwitching(email: string, pass: string): Promise<string> {
+  const secondaryAppName = `staffUserCreation-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+  const secondaryAuth = (await import('firebase/auth')).getAuth(secondaryApp);
+  try {
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), pass);
+    const uid = cred.user.uid;
+    await signOut(secondaryAuth);
+    return uid;
+  } finally {
+    try {
+      await deleteApp(secondaryApp);
+    } catch (e) {
+      console.warn('Ephemeral auth app cleanup notice:', e);
+    }
+  }
+}
 
 // Ensure database is seeded with initial data if empty
 let isSeeded = false;
@@ -57,11 +86,6 @@ export async function ensureFirestoreSeeded(): Promise<void> {
       // Schedules
       for (const sc of defaultDbData.barber_schedules) {
         batch.set(doc(db, 'barber_schedules', sc.id), sc);
-      }
-
-      // Users
-      for (const u of defaultDbData.users) {
-        batch.set(doc(db, 'users', u.id), u);
       }
 
       // Sample Appointments
@@ -785,38 +809,122 @@ export async function updateShopSettingsFS(data: Partial<ShopSettings>): Promise
 }
 
 // ---------------- AUTHENTICATION & USERS ----------------
-export async function loginFS(email: string, password: string): Promise<{ user: UserProfile; token: string }> {
-  await ensureFirestoreSeeded();
-  const path = 'users';
-  try {
-    const snap = await getDocs(collection(db, path));
-    const users = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-    const normalizedEmail = email.trim().toLowerCase();
-    const matched = users.find(u => {
-      if (u.active === false || u.password !== password) return false;
-      const uEmail = (u.email || '').toLowerCase();
-      if (uEmail === normalizedEmail) return true;
-      // Aliases para facilitar acesso do dono e admin
-      if (u.role === 'owner' && (normalizedEmail === 'dono' || normalizedEmail === 'allinesoares050@gmail.com' || normalizedEmail === 'dono@liderbarbers.com.br')) {
-        return true;
-      }
-      if (u.role === 'admin' && (normalizedEmail === 'admin' || normalizedEmail === 'admin@liderbarbers.com.br' || normalizedEmail === 'admin@liberdade.com.br')) {
-        return true;
-      }
-      return false;
-    });
 
-    if (!matched) {
-      throw new Error('E-mail ou senha incorretos.');
+export async function checkNeedsOwnerSetupFS(): Promise<boolean> {
+  try {
+    const sRef = doc(db, 'settings', 'main');
+    const snap = await getDoc(sRef);
+    if (!snap.exists()) return true;
+    const data = snap.data();
+    return data.owner_configured !== true;
+  } catch (e) {
+    console.warn('Notice checking owner setup status in Firestore:', e);
+    return true;
+  }
+}
+
+export async function setupInitialOwnerFS(data: {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}): Promise<{ user: UserProfile; token: string }> {
+  // 1. Create owner in Firebase Authentication
+  const normalizedEmail = data.email.trim().toLowerCase();
+  const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, data.password);
+  const uid = cred.user.uid;
+
+  // 2. Create owner user document in Firestore (strictly NO password stored)
+  const ownerProfile: UserProfile = {
+    id: uid,
+    name: data.name.trim(),
+    email: normalizedEmail,
+    role: 'owner',
+    phone: data.phone?.trim() || '',
+    active: true,
+  };
+
+  await setDoc(doc(db, 'users', uid), {
+    ...ownerProfile,
+    created_at: new Date().toISOString(),
+  });
+
+  // 3. Update settings to mark owner_configured = true
+  try {
+    const sRef = doc(db, 'settings', 'main');
+    const sSnap = await getDoc(sRef);
+    if (sSnap.exists()) {
+      await updateDoc(sRef, {
+        owner_configured: true,
+        owner_email: normalizedEmail,
+      });
+    } else {
+      await setDoc(sRef, {
+        name: 'Líder Barbers',
+        owner_configured: true,
+        owner_email: normalizedEmail,
+      });
+    }
+  } catch (e) {
+    console.warn('Warning updating settings on owner setup:', e);
+  }
+
+  const token = await cred.user.getIdToken();
+  return {
+    user: ownerProfile,
+    token,
+  };
+}
+
+export async function loginFS(email: string, password: string): Promise<{ user: UserProfile; token: string }> {
+  const normalizedEmail = email.trim().toLowerCase();
+  try {
+    // Authenticate securely via Firebase Authentication SDK
+    const userCred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+    const uid = userCred.user.uid;
+    const token = await userCred.user.getIdToken();
+
+    // Fetch user profile from Firestore users collection
+    const userDocRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userDocRef);
+
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      if (data.active === false) {
+        await signOut(auth);
+        throw new Error('Esta conta de acesso foi desativada pela administração.');
+      }
+      return {
+        user: { id: uid, ...data } as UserProfile,
+        token,
+      };
     }
 
-    const { password: _, ...userSafe } = matched;
-    return {
-      user: userSafe as UserProfile,
-      token: 'fs-token-' + matched.id,
+    // Fallback profile if record exists with legacy UID or token data
+    const fallbackProfile: UserProfile = {
+      id: uid,
+      email: userCred.user.email || normalizedEmail,
+      name: userCred.user.displayName || 'Membro da Equipe',
+      role: 'admin',
+      active: true,
     };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
+    return {
+      user: fallbackProfile,
+      token,
+    };
+  } catch (error: any) {
+    if (
+      error.code === 'auth/user-not-found' ||
+      error.code === 'auth/wrong-password' ||
+      error.code === 'auth/invalid-credential' ||
+      error.code === 'auth/invalid-email'
+    ) {
+      throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
+    }
+    if (error.code === 'auth/too-many-requests') {
+      throw new Error('Muitas tentativas sem sucesso. Aguarde alguns instantes e tente novamente.');
+    }
+    throw error;
   }
 }
 
@@ -963,22 +1071,22 @@ export async function createAdminAccountFS(data: {
   password: string;
   phone?: string;
 }): Promise<AdminAccount> {
-  const id = 'user-admin-' + Date.now();
+  const normalizedEmail = data.email.trim().toLowerCase();
+  const uid = await createAuthUserWithoutSwitching(normalizedEmail, data.password);
   const newAdmin = {
-    id,
-    email: data.email,
-    password: data.password,
-    name: data.name,
+    id: uid,
+    email: normalizedEmail,
+    name: data.name.trim(),
     role: 'admin',
-    phone: data.phone || '',
+    phone: data.phone?.trim() || '',
     active: true,
     created_at: new Date().toISOString(),
   };
-  await setDoc(doc(db, 'users', id), newAdmin);
+  await setDoc(doc(db, 'users', uid), newAdmin);
   return {
-    id,
+    id: uid,
     name: data.name,
-    email: data.email,
+    email: normalizedEmail,
     phone: data.phone,
     active: true,
     role: 'admin',
@@ -994,7 +1102,8 @@ export async function updateAdminAccountFS(
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error('Administrador não encontrado');
   const cur = snap.data();
-  const updated = { ...cur, ...data };
+  const { password: _pass, ...cleanData } = data;
+  const updated = { ...cur, ...cleanData };
   await setDoc(ref, updated);
   return {
     id,
@@ -1053,20 +1162,20 @@ export async function createBarberAccountFS(data: {
   name?: string;
   phone?: string;
 }): Promise<{ success: boolean; user: UserProfile; message: string }> {
-  const id = 'user-barber-' + Date.now();
+  const normalizedEmail = data.email.trim().toLowerCase();
+  const uid = await createAuthUserWithoutSwitching(normalizedEmail, data.password);
   const newUser = {
-    id,
-    email: data.email,
-    password: data.password,
+    id: uid,
+    email: normalizedEmail,
     name: data.name || 'Barbeiro',
     role: 'barber',
     barber_id: data.barber_id,
     commission_rate: data.commission_rate,
-    phone: data.phone || '',
+    phone: data.phone?.trim() || '',
     active: true,
     created_at: new Date().toISOString(),
   };
-  await setDoc(doc(db, 'users', id), newUser);
+  await setDoc(doc(db, 'users', uid), newUser);
 
   // Update barber commission in barbers collection as well
   try {
@@ -1074,17 +1183,16 @@ export async function createBarberAccountFS(data: {
     await updateDoc(bRef, {
       commission_rate: data.commission_rate,
       has_login: true,
-      login_email: data.email,
+      login_email: normalizedEmail,
     });
   } catch (e) {
     console.warn('Barber profile update notice:', e);
   }
 
-  const { password: _, ...safe } = newUser;
   return {
     success: true,
-    user: safe as UserProfile,
-    message: 'Conta criada com sucesso!',
+    user: newUser as UserProfile,
+    message: 'Conta criada com sucesso no Firebase Auth!',
   };
 }
 
@@ -1096,7 +1204,8 @@ export async function updateBarberAccountFS(
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error('Conta de barbeiro não encontrada');
   const cur = snap.data();
-  const updated = { ...cur, ...data };
+  const { password: _pass, ...cleanData } = data;
+  const updated = { ...cur, ...cleanData };
   await setDoc(ref, updated);
 
   if (updated.barber_id && data.commission_rate !== undefined) {
@@ -1109,10 +1218,9 @@ export async function updateBarberAccountFS(
     }
   }
 
-  const { password: _, ...safe } = updated;
   return {
     success: true,
-    user: safe as UserProfile,
+    user: updated as UserProfile,
   };
 }
 

@@ -30,8 +30,8 @@ export const AuthPage: React.FC = () => {
   const { isInstallable, install } = usePWAInstall();
 
   const [selectedRole, setSelectedRole] = useState<'owner' | 'admin' | 'barber'>('owner');
-  const [email, setEmail] = useState('dono@liderbarbers.com.br');
-  const [password, setPassword] = useState('dono');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [installModalOpen, setInstallModalOpen] = useState(false);
@@ -44,32 +44,16 @@ export const AuthPage: React.FC = () => {
     const roleParam = params.get('role');
     if (roleParam === 'admin') {
       setSelectedRole('admin');
-      setEmail('admin@liderbarbers.com.br');
-      setPassword('admin');
     } else if (roleParam === 'barber') {
       setSelectedRole('barber');
-      setEmail('marcos@liberdade.com.br');
-      setPassword('barber');
     } else if (roleParam === 'owner') {
       setSelectedRole('owner');
-      setEmail('dono@liderbarbers.com.br');
-      setPassword('dono');
     }
   }, []);
 
   const handleRoleSelect = (role: 'owner' | 'admin' | 'barber') => {
     setSelectedRole(role);
     setError(null);
-    if (role === 'owner') {
-      setEmail('dono@liderbarbers.com.br');
-      setPassword('dono');
-    } else if (role === 'admin') {
-      setEmail('admin@liderbarbers.com.br');
-      setPassword('admin');
-    } else {
-      setEmail('marcos@liberdade.com.br');
-      setPassword('barber');
-    }
   };
 
   // If already logged in

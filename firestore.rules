@@ -6,55 +6,94 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Shop settings
+    function getUserRole() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : '';
+    }
+
+    function isOwner() {
+      return getUserRole() == 'owner';
+    }
+
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+
+    function isOwnerOrAdmin() {
+      return isOwner() || isAdmin();
+    }
+
+    function isBarber() {
+      return getUserRole() == 'barber';
+    }
+
+    function isOwnerConfigured() {
+      return exists(/databases/$(database)/documents/settings/main)
+        && get(/databases/$(database)/documents/settings/main).data.get('owner_configured', false) == true;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Shop settings: Public read, write only for admin/owner (or initial owner bootstrap)
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isOwnerOrAdmin()
+        || (isSignedIn() && !isOwnerConfigured() && settingId == 'main');
     }
 
-    // Services catalog
+    // Services catalog: Public read, write only for admin/owner
     match /services/{serviceId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isOwnerOrAdmin();
     }
 
-    // Barbers profiles
+    // Barbers profiles: Public read, write only for admin/owner
     match /barbers/{barberId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isOwnerOrAdmin();
     }
 
-    // Barber schedules
+    // Barber schedules: Public read, write for admin/owner or the assigned barber
     match /barber_schedules/{scheduleId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isOwnerOrAdmin()
+        || (isSignedIn() && isBarber() && resource != null && resource.data.barber_id == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.barber_id);
     }
 
-    // Barber time off
+    // Barber time off: Public read, write for admin/owner or the assigned barber
     match /barber_time_off/{timeOffId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isOwnerOrAdmin()
+        || (isSignedIn() && isBarber() && (
+             (resource != null && resource.data.barber_id == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.barber_id)
+             || (request.resource != null && request.resource.data.barber_id == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.barber_id)
+           ));
     }
 
-    // Appointments (Customer bookings)
+    // Appointments (Customer bookings): Public read and create, update/delete only for authenticated staff
     match /appointments/{appointmentId} {
       allow read: if true;
       allow create: if request.resource.data.customer_name is string
+                    && request.resource.data.customer_name.size() > 0
                     && request.resource.data.customer_phone is string
+                    && request.resource.data.customer_phone.size() > 0
                     && request.resource.data.date is string
                     && request.resource.data.start_time is string;
-      allow update, delete: if true;
+      allow update, delete: if isSignedIn();
     }
 
-    // Users and Staff accounts
+    // Users and Staff accounts (STRICT SECURITY - NO PUBLIC ACCESS)
+    // Only the authenticated user can read their own document, and admin/owner can read/write
     match /users/{userId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Test connection doc
-    match /test/{docId} {
-      allow read, write: if true;
+      allow get: if isSignedIn() && (request.auth.uid == userId || isOwnerOrAdmin());
+      allow list: if isOwnerOrAdmin();
+      allow create: if isOwnerOrAdmin()
+        || (isSignedIn() && request.auth.uid == userId && !isOwnerConfigured() && request.resource.data.role == 'owner');
+      allow update, delete: if isOwnerOrAdmin();
     }
   }
 }

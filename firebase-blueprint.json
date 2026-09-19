@@ -14,7 +14,9 @@
         "whatsapp": { "type": "string" },
         "address": { "type": "string" },
         "instagram": { "type": "string" },
-        "opening_hours": { "type": "string" }
+        "opening_hours": { "type": "string" },
+        "owner_configured": { "type": "boolean" },
+        "owner_email": { "type": "string" }
       },
       "required": ["name", "phone"]
     },
@@ -112,12 +114,11 @@
     },
     "UserProfile": {
       "title": "UserProfile",
-      "description": "User profile with role access",
+      "description": "User profile with role access (managed via Firebase Authentication)",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "email": { "type": "string" },
-        "password": { "type": "string" },
         "name": { "type": "string" },
         "role": { "type": "string" },
         "phone": { "type": "string" },

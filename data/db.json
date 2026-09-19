@@ -5,7 +5,8 @@
     "logo_url": "",
     "hero_image_url": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80",
     "phone": "(11) 98765-4321",
-    "address": "Av. Principal, 780"
+    "address": "Av. Principal, 780",
+    "owner_configured": false
   },
   "services": [
     {
@@ -81,6 +82,25 @@
   ],
   "barbers": [
     {
+      "id": "user-admin",
+      "name": "Administrador Liberdade",
+      "nickname": "Administrador Liberdade (Admin)",
+      "bio": "Administrador & Barbeiro Especialista",
+      "photo_url": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=600&auto=format&fit=crop&q=80",
+      "specialties": [
+        "Cortes Clássicos",
+        "Visagismo",
+        "Barboterapia",
+        "Degradê"
+      ],
+      "active": true,
+      "phone": "",
+      "email": "admin@liberdade.com.br",
+      "commission_rate": 100,
+      "rating": 5,
+      "reviews_count": 48
+    },
+    {
       "id": "barber-1",
       "name": "Marcos Valente",
       "nickname": "Mestre Valente",
@@ -96,7 +116,8 @@
       "phone": "(11) 98765-4321",
       "email": "marcos@liberdade.com.br",
       "rating": 4.98,
-      "reviews_count": 240
+      "reviews_count": 240,
+      "commission_rate": 50
     },
     {
       "id": "barber-2",
@@ -114,7 +135,8 @@
       "phone": "(11) 97654-3210",
       "email": "diego@liberdade.com.br",
       "rating": 4.95,
-      "reviews_count": 195
+      "reviews_count": 195,
+      "commission_rate": 50
     },
     {
       "id": "barber-3",
@@ -132,7 +154,8 @@
       "phone": "(11) 96543-2109",
       "email": "andre@liberdade.com.br",
       "rating": 4.92,
-      "reviews_count": 160
+      "reviews_count": 160,
+      "commission_rate": 50
     }
   ],
   "barber_schedules": [
@@ -345,6 +368,76 @@
       "break_start": "12:30",
       "break_end": "13:30",
       "active": true
+    },
+    {
+      "id": "sched-user-admin-0",
+      "barber_id": "user-admin",
+      "day_of_week": 0,
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "break_start": "12:30",
+      "break_end": "13:30",
+      "active": false
+    },
+    {
+      "id": "sched-user-admin-1",
+      "barber_id": "user-admin",
+      "day_of_week": 1,
+      "start_time": "09:00",
+      "end_time": "20:00",
+      "break_start": "12:30",
+      "break_end": "13:30",
+      "active": true
+    },
+    {
+      "id": "sched-user-admin-2",
+      "barber_id": "user-admin",
+      "day_of_week": 2,
+      "start_time": "09:00",
+      "end_time": "20:00",
+      "break_start": "12:30",
+      "break_end": "13:30",
+      "active": true
+    },
+    {
+      "id": "sched-user-admin-3",
+      "barber_id": "user-admin",
+      "day_of_week": 3,
+      "start_time": "09:00",
+      "end_time": "20:00",
+      "break_start": "12:30",
+      "break_end": "13:30",
+      "active": true
+    },
+    {
+      "id": "sched-user-admin-4",
+      "barber_id": "user-admin",
+      "day_of_week": 4,
+      "start_time": "09:00",
+      "end_time": "20:00",
+      "break_start": "12:30",
+      "break_end": "13:30",
+      "active": true
+    },
+    {
+      "id": "sched-user-admin-5",
+      "barber_id": "user-admin",
+      "day_of_week": 5,
+      "start_time": "09:00",
+      "end_time": "20:00",
+      "break_start": "12:30",
+      "break_end": "13:30",
+      "active": true
+    },
+    {
+      "id": "sched-user-admin-6",
+      "barber_id": "user-admin",
+      "day_of_week": 6,
+      "start_time": "08:30",
+      "end_time": "19:00",
+      "break_start": "12:30",
+      "break_end": "13:30",
+      "active": true
     }
   ],
   "barber_time_off": [
@@ -440,33 +533,33 @@
     {
       "id": "user-admin",
       "email": "admin@liberdade.com.br",
-      "password": "admin",
-      "name": "Administrador Liberdade",
-      "role": "admin"
+      "name": "Administrador",
+      "role": "admin",
+      "active": true
     },
     {
       "id": "user-marcos",
       "email": "marcos@liberdade.com.br",
-      "password": "barber",
       "name": "Marcos Valente",
       "role": "barber",
-      "barber_id": "barber-1"
+      "barber_id": "barber-1",
+      "active": true
     },
     {
       "id": "user-diego",
       "email": "diego@liberdade.com.br",
-      "password": "barber",
       "name": "Diego Castro",
       "role": "barber",
-      "barber_id": "barber-2"
+      "barber_id": "barber-2",
+      "active": true
     },
     {
       "id": "user-andre",
       "email": "andre@liberdade.com.br",
-      "password": "barber",
       "name": "André Santana",
       "role": "barber",
-      "barber_id": "barber-3"
+      "barber_id": "barber-3",
+      "active": true
     }
   ]
 }

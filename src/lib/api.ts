@@ -366,6 +366,41 @@ export async function fetchAdminMetrics(): Promise<any> {
   );
 }
 
+export async function checkNeedsOwnerSetup(): Promise<boolean> {
+  return tryFirestoreOrApi(
+    () => FS.checkNeedsOwnerSetupFS(),
+    async () => {
+      const res = await fetch('/api/auth/needs-owner-setup');
+      if (!res.ok) return false;
+      const data = await res.json().catch(() => ({}));
+      return data.needsSetup === true;
+    }
+  );
+}
+
+export async function setupInitialOwner(data: {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}): Promise<{ user: UserProfile; token: string }> {
+  return tryFirestoreOrApi(
+    () => FS.setupInitialOwnerFS(data),
+    async () => {
+      const res = await fetch('/api/auth/setup-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao configurar proprietário inicial');
+      }
+      return res.json();
+    }
+  );
+}
+
 export async function login(email: string, password: string): Promise<{ user: UserProfile; token: string }> {
   return tryFirestoreOrApi(
     () => FS.loginFS(email, password),

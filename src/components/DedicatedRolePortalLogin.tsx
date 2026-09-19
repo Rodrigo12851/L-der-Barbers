@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from '../context/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -32,25 +32,32 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
   onLoginSuccess
 }) => {
   const { navigate } = useRouter();
-  const { login } = useAuth();
+  const { login, needsOwnerSetup, setupOwner } = useAuth();
   const { settings } = useSettings();
   const { isInstallable, install } = usePWAInstall();
 
-  const [email, setEmail] = useState(() => {
-    if (role === 'owner') return 'dono@liderbarbers.com.br';
-    if (role === 'admin') return 'admin@liderbarbers.com.br';
-    return 'marcos@liberdade.com.br';
-  });
-  const [password, setPassword] = useState(() => {
-    if (role === 'owner') return 'dono';
-    if (role === 'admin') return 'admin';
-    return 'barber';
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [installModalOpen, setInstallModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Initial owner setup state
+  const [isSetupMode, setIsSetupMode] = useState(false);
+  const [setupName, setSetupName] = useState('');
+  const [setupEmail, setSetupEmail] = useState('');
+  const [setupPhone, setSetupPhone] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [setupConfirmPassword, setSetupConfirmPassword] = useState('');
+  const [showSetupPassword, setShowSetupPassword] = useState(false);
+
+  useEffect(() => {
+    if (role === 'owner' && needsOwnerSetup) {
+      setIsSetupMode(true);
+    }
+  }, [role, needsOwnerSetup]);
 
   const roleConfigs = {
     owner: {
@@ -113,6 +120,42 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
       }
     } catch (err: any) {
       setError(err.message || 'Falha no login. Verifique seu e-mail e senha.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!setupName.trim() || !setupEmail.trim() || !setupPassword) {
+      setError('Por favor preencha nome, e-mail e senha.');
+      return;
+    }
+    if (setupPassword.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+    if (setupPassword !== setupConfirmPassword) {
+      setError('As senhas digitadas não coincidem.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      await setupOwner({
+        name: setupName,
+        email: setupEmail,
+        password: setupPassword,
+        phone: setupPhone,
+      });
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      } else {
+        navigate(config.path);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Falha ao configurar o proprietário no sistema.');
     } finally {
       setLoading(false);
     }
@@ -205,111 +248,220 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
             </div>
           )}
 
-          {/* Dica de Acesso Padrão */}
-          <div className="rounded-xl border border-[#d4af37]/20 bg-[#d4af37]/5 px-3 py-2 text-[11px] text-neutral-300 flex items-center justify-between gap-2">
-            <div>
-              <span className="text-[#d4af37] font-semibold">Senha inicial: </span>
-              <code className="font-mono bg-[#161822] px-1.5 py-0.5 rounded text-white border border-[#2b3040]">
-                {role === 'owner' ? 'dono' : role === 'admin' ? 'admin' : 'barber'}
-              </code>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (role === 'owner') {
-                  setEmail('dono@liderbarbers.com.br');
-                  setPassword('dono');
-                } else if (role === 'admin') {
-                  setEmail('admin@liderbarbers.com.br');
-                  setPassword('admin');
-                } else {
-                  setEmail('marcos@liberdade.com.br');
-                  setPassword('barber');
-                }
-              }}
-              className="text-[10px] text-[#d4af37] underline hover:text-[#f5d77f] cursor-pointer"
-            >
-              Preencher dados
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-3.5">
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
-                E-mail de Acesso
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="seu-email@liderbarbers.com.br"
-                  className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
-                />
+          {isSetupMode && role === 'owner' ? (
+            /* Formulário de Configuração Inicial do Proprietário */
+            <form onSubmit={handleSetupSubmit} className="space-y-3.5">
+              <div className="rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/10 p-3 text-xs text-[#f5d77f]">
+                <p className="font-bold flex items-center gap-1.5 mb-1">
+                  <Crown className="w-4 h-4 text-[#d4af37]" />
+                  <span>Configuração Inicial do Proprietário</span>
+                </p>
+                <p className="text-[11px] text-neutral-300">
+                  Crie sua conta mestre com e-mail e senha exclusivos para proteger o acesso e gerenciar administradores.
+                </p>
               </div>
-            </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300">
-                  Senha
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
+                  Nome Completo
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-[#d4af37] transition cursor-pointer"
-                >
-                  {showPassword ? (
-                    <>
-                      <EyeOff className="w-3.5 h-3.5" />
-                      <span>Ocultar</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Ver senha</span>
-                    </>
-                  )}
-                </button>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={setupName}
+                    onChange={(e) => setSetupName(e.target.value)}
+                    required
+                    placeholder="Ex: Carlos Silva"
+                    className="w-full rounded-xl border border-[#2b3040] bg-[#161822] px-3.5 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-10 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
-                  className="absolute right-3 top-2 text-neutral-400 hover:text-[#d4af37] transition cursor-pointer p-1"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#e5c158] to-[#aa8222] py-2.5 sm:py-3 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 active:scale-95 transition shadow-lg shadow-[#d4af37]/20 disabled:opacity-50 cursor-pointer"
-            >
-              {loading ? (
-                'Conectando...'
-              ) : (
-                <>
-                  <span>Entrar no Sistema</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
+                  E-mail do Proprietário
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
+                  <input
+                    type="email"
+                    value={setupEmail}
+                    onChange={(e) => setSetupEmail(e.target.value)}
+                    required
+                    placeholder="seu-email@dominio.com"
+                    className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
+                  WhatsApp / Celular (Opcional)
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={setupPhone}
+                    onChange={(e) => setSetupPhone(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    className="w-full rounded-xl border border-[#2b3040] bg-[#161822] px-3.5 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
+                  Criar Senha Forte (mínimo 6 dígitos)
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
+                  <input
+                    type={showSetupPassword ? 'text' : 'password'}
+                    value={setupPassword}
+                    onChange={(e) => setSetupPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-10 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSetupPassword(!showSetupPassword)}
+                    className="absolute right-3 top-2 text-neutral-400 hover:text-[#d4af37] transition cursor-pointer p-1"
+                  >
+                    {showSetupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
+                  Confirmar Senha
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
+                  <input
+                    type={showSetupPassword ? 'text' : 'password'}
+                    value={setupConfirmPassword}
+                    onChange={(e) => setSetupConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#e5c158] to-[#aa8222] py-2.5 sm:py-3 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 active:scale-95 transition shadow-lg shadow-[#d4af37]/20 disabled:opacity-50 cursor-pointer mt-2"
+              >
+                {loading ? 'Cadastrando...' : 'Criar Proprietário & Ativar Sistema'}
+              </button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsSetupMode(false)}
+                  className="text-xs text-neutral-400 hover:text-[#d4af37] transition cursor-pointer"
+                >
+                  Já possui conta criada? <span className="underline text-[#f5d77f]">Fazer login</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            /* Formulário de Login Seguro Padrão */
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
+                  E-mail de Acesso
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="seu-email@liderbarbers.com.br"
+                    className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300">
+                    Senha
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-[#d4af37] transition cursor-pointer"
+                  >
+                    {showPassword ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Ocultar</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Ver senha</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-[#2b3040] bg-[#161822] pl-10 pr-10 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                    className="absolute right-3 top-2 text-neutral-400 hover:text-[#d4af37] transition cursor-pointer p-1"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#e5c158] to-[#aa8222] py-2.5 sm:py-3 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 active:scale-95 transition shadow-lg shadow-[#d4af37]/20 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  'Conectando...'
+                ) : (
+                  <>
+                    <span>Entrar no Sistema</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              {role === 'owner' && (
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSetupMode(true)}
+                    className="text-xs text-neutral-400 hover:text-[#d4af37] transition cursor-pointer"
+                  >
+                    Primeiro acesso? <span className="underline text-[#f5d77f]">Configurar conta do proprietário</span>
+                  </button>
+                </div>
               )}
-            </button>
-          </form>
+            </form>
+          )}
 
           {/* Direct Link Copier */}
           <div className="pt-3 border-t border-[#212534] space-y-2">

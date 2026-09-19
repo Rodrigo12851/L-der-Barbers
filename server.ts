@@ -21,6 +21,8 @@ interface DatabaseSchema {
     hero_image_url: string;
     phone: string;
     address: string;
+    owner_configured?: boolean;
+    owner_email?: string;
   };
   services: any[];
   barbers: any[];
@@ -352,36 +354,8 @@ function loadDb() {
           address: 'Av. Paulista, 1000 — São Paulo, SP'
         };
       }
-      // Ensure owner user exists
+      // Ensure db.users array exists
       if (!db.users) db.users = [];
-      const hasOwner = db.users.some(u => u.role === 'owner');
-      if (!hasOwner) {
-        db.users.unshift({
-          id: 'user-owner',
-          email: 'dono@liderbarbers.com.br',
-          password: 'dono',
-          name: 'Proprietário Geral',
-          role: 'owner',
-          phone: '(11) 99999-0000',
-          active: true,
-          created_at: new Date().toISOString()
-        });
-      }
-      // Ensure admin exists
-      const hasAdmin = db.users.some(u => u.role === 'admin');
-      if (!hasAdmin) {
-        db.users.push({
-          id: 'user-admin',
-          email: 'admin@liderbarbers.com.br',
-          password: 'admin',
-          name: 'Gerente da Barbearia',
-          role: 'admin',
-          barber_id: 'user-admin',
-          phone: '(11) 98765-4321',
-          active: true,
-          created_at: new Date().toISOString()
-        });
-      }
 
       // Ensure every Admin user automatically has a Barber profile in db.barbers & schedules
       if (!db.barbers) db.barbers = [];
@@ -1093,7 +1067,55 @@ app.patch('/api/appointments/:id/status', (req, res) => {
   res.json({ success: true, appointment: apt });
 });
 
-// Auth endpoint
+// Auth endpoints
+app.get('/api/auth/needs-owner-setup', (req, res) => {
+  const hasOwner = (db.users || []).some(u => u.role === 'owner');
+  const configured = db.settings?.owner_configured === true;
+  res.json({ needsSetup: !hasOwner || !configured });
+});
+
+app.post('/api/auth/setup-owner', (req, res) => {
+  const { name, email, password, phone } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Nome, e-mail e senha são obrigatórios.' });
+  }
+
+  const hasOwner = (db.users || []).some(u => u.role === 'owner');
+  if (hasOwner && db.settings?.owner_configured === true) {
+    return res.status(400).json({ error: 'O proprietário já foi configurado no sistema.' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const ownerId = 'user-owner-' + Date.now();
+  const ownerUser = {
+    id: ownerId,
+    email: normalizedEmail,
+    password: password, // Note: server fallback only; primary is Firebase Auth
+    name: name.trim(),
+    role: 'owner',
+    phone: phone ? phone.trim() : '',
+    active: true,
+    created_at: new Date().toISOString()
+  };
+
+  if (!db.users) db.users = [];
+  // Remove any legacy unconfigured owner
+  db.users = db.users.filter(u => u.role !== 'owner');
+  db.users.unshift(ownerUser);
+
+  if (!db.settings) db.settings = {} as any;
+  db.settings.owner_configured = true;
+  db.settings.owner_email = normalizedEmail;
+
+  saveDb();
+
+  const { password: _, ...profile } = ownerUser;
+  res.json({
+    user: profile,
+    token: `session-${ownerId}-${Date.now()}`
+  });
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -1103,14 +1125,7 @@ app.post('/api/auth/login', (req, res) => {
   const normalizedEmail = email.toLowerCase().trim();
   const user = db.users.find(u => {
     const uEmail = (u.email || '').toLowerCase().trim();
-    if (uEmail === normalizedEmail) return true;
-    if (u.role === 'owner' && (normalizedEmail === 'dono' || normalizedEmail === 'dono@liderbarbers.com.br' || normalizedEmail === 'allinesoares050@gmail.com')) {
-      return true;
-    }
-    if (u.role === 'admin' && (normalizedEmail === 'admin' || normalizedEmail === 'admin@liderbarbers.com.br' || normalizedEmail === 'admin@liberdade.com.br')) {
-      return true;
-    }
-    return false;
+    return uEmail === normalizedEmail;
   });
 
   if (!user || user.password !== password) {

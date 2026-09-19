@@ -58,7 +58,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 export async function testConnection() {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDocFromServer(doc(db, 'settings', 'main'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.warn('Verifique a conexão ou configuração do Firebase.');
