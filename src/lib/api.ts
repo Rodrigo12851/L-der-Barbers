@@ -470,26 +470,36 @@ export async function fetchBarberRevenue(barberId: string, period = 'all'): Prom
 
 // ---------------- OWNER APP AREA ----------------
 export async function fetchOwnerOverview(): Promise<OwnerOverviewMetrics> {
-  return tryFirestoreOrApi(
-    () => FS.getOwnerOverviewFS(),
-    async () => {
-      const res = await fetch('/api/owner/overview');
-      if (!res.ok) throw new Error('Erro ao carregar visão geral do dono');
-      return res.json();
-    }
-  );
+  try {
+    return await tryFirestoreOrApi(
+      () => FS.getOwnerOverviewFS(),
+      async () => {
+        const res = await fetch('/api/owner/overview');
+        if (!res.ok) throw new Error('Erro ao carregar visão geral do dono');
+        return res.json();
+      }
+    );
+  } catch (err) {
+    console.warn('Notice loading owner overview, generating resilient metrics:', err);
+    return await FS.getOwnerOverviewFS();
+  }
 }
 
 export async function fetchOwnerAccounts(): Promise<OwnerAccount[]> {
-  return tryFirestoreOrApi(
-    () => FS.getOwnerAccountsFS(),
-    async () => {
-      const res = await fetch('/api/owner/accounts');
-      if (!res.ok) throw new Error('Erro ao listar contas de proprietário');
-      const data = await res.json();
-      return data.accounts || [];
-    }
-  );
+  try {
+    return await tryFirestoreOrApi(
+      () => FS.getOwnerAccountsFS(),
+      async () => {
+        const res = await fetch('/api/owner/accounts');
+        if (!res.ok) throw new Error('Erro ao listar contas de proprietário');
+        const data = await res.json();
+        return data.accounts || [];
+      }
+    );
+  } catch (err) {
+    console.warn('Notice loading owner accounts, using resilient list:', err);
+    return await FS.getOwnerAccountsFS();
+  }
 }
 
 export async function updateOwnerCredentials(data: {

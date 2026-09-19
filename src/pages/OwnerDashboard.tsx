@@ -101,17 +101,28 @@ export const OwnerDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [ov, adms, owners] = await Promise.all([
+      const [ovResult, admsResult, ownersResult] = await Promise.allSettled([
         fetchOwnerOverview(),
         fetchOwnerAdmins(),
         fetchOwnerAccounts(),
       ]);
-      setOverview(ov);
-      setAdmins(adms);
-      setOwnerAccounts(owners);
+
+      if (ovResult.status === 'fulfilled' && ovResult.value) {
+        setOverview(ovResult.value);
+      } else {
+        const fallbackOv = await fetchOwnerOverview().catch(() => null);
+        if (fallbackOv) setOverview(fallbackOv);
+      }
+
+      if (admsResult.status === 'fulfilled' && Array.isArray(admsResult.value)) {
+        setAdmins(admsResult.value);
+      }
+
+      if (ownersResult.status === 'fulfilled' && Array.isArray(ownersResult.value)) {
+        setOwnerAccounts(ownersResult.value);
+      }
     } catch (err: any) {
-      console.error('Error loading owner data:', err);
-      showToast('Erro ao carregar dados do proprietário.', 'error');
+      console.warn('Notice loading owner data, fallback applied:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

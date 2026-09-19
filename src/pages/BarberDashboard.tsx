@@ -119,15 +119,60 @@ export const BarberDashboard: React.FC = () => {
     // Session is checked inline in render
   }, [user, authLoading]);
 
-  // Determine current barberId
+  // Determine current barberId & always load barber profiles
   useEffect(() => {
-    if (user) {
-      const bId = user.barber_id || (user.role === 'admin' ? 'barber-1' : '');
-      setSelectedBarberId(bId);
-      if (user.role === 'admin') {
-        fetchBarbers().then(setAllBarbers).catch(console.error);
-      }
-    }
+    let isMounted = true;
+    fetchBarbers()
+      .then((barbers) => {
+        if (!isMounted) return;
+        setAllBarbers(barbers || []);
+
+        if (user) {
+          // 1. Direct match on user.barber_id
+          if (user.barber_id) {
+            setSelectedBarberId(user.barber_id);
+            return;
+          }
+
+          // 2. Match by email
+          const uEmail = (user.email || '').toLowerCase().trim();
+          const matchByEmail = (barbers || []).find(b => (b.email || '').toLowerCase().trim() === uEmail);
+          if (matchByEmail) {
+            setSelectedBarberId(matchByEmail.id);
+            return;
+          }
+
+          // 3. Match by name or nickname
+          const uName = (user.name || '').toLowerCase().trim();
+          const matchByName = (barbers || []).find(
+            b => (b.name || '').toLowerCase().trim() === uName || (b.nickname || '').toLowerCase().trim() === uName
+          );
+          if (matchByName) {
+            setSelectedBarberId(matchByName.id);
+            return;
+          }
+
+          // 4. Default to first active barber for admin/owner or general staff
+          if (barbers && barbers.length > 0) {
+            const firstActive = barbers.find(b => b.active) || barbers[0];
+            setSelectedBarberId(firstActive.id);
+            return;
+          }
+
+          // 5. Ultimate fallback
+          setSelectedBarberId('barber-1');
+        }
+      })
+      .catch((err) => {
+        console.warn('Notice fetching barbers in BarberDashboard:', err);
+        if (isMounted) {
+          setSelectedBarberId(user?.barber_id || 'barber-1');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   // Web Audio chime for incoming appointments
