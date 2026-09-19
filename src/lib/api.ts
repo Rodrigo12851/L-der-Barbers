@@ -419,6 +419,10 @@ export async function login(email: string, password: string): Promise<{ user: Us
   );
 }
 
+export async function loginWithGoogle(): Promise<{ user: UserProfile; token: string }> {
+  return FS.loginWithGoogleFS();
+}
+
 export async function fetchShopSettings(): Promise<ShopSettings> {
   return tryFirestoreOrApi(
     () => FS.getShopSettingsFS(),

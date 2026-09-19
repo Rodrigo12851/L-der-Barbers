@@ -1069,51 +1069,11 @@ app.patch('/api/appointments/:id/status', (req, res) => {
 
 // Auth endpoints
 app.get('/api/auth/needs-owner-setup', (req, res) => {
-  const hasOwner = (db.users || []).some(u => u.role === 'owner');
-  const configured = db.settings?.owner_configured === true;
-  res.json({ needsSetup: !hasOwner || !configured });
+  res.json({ needsSetup: false });
 });
 
 app.post('/api/auth/setup-owner', (req, res) => {
-  const { name, email, password, phone } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Nome, e-mail e senha são obrigatórios.' });
-  }
-
-  const hasOwner = (db.users || []).some(u => u.role === 'owner');
-  if (hasOwner && db.settings?.owner_configured === true) {
-    return res.status(400).json({ error: 'O proprietário já foi configurado no sistema.' });
-  }
-
-  const normalizedEmail = email.toLowerCase().trim();
-  const ownerId = 'user-owner-' + Date.now();
-  const ownerUser = {
-    id: ownerId,
-    email: normalizedEmail,
-    password: password, // Note: server fallback only; primary is Firebase Auth
-    name: name.trim(),
-    role: 'owner',
-    phone: phone ? phone.trim() : '',
-    active: true,
-    created_at: new Date().toISOString()
-  };
-
-  if (!db.users) db.users = [];
-  // Remove any legacy unconfigured owner
-  db.users = db.users.filter(u => u.role !== 'owner');
-  db.users.unshift(ownerUser);
-
-  if (!db.settings) db.settings = {} as any;
-  db.settings.owner_configured = true;
-  db.settings.owner_email = normalizedEmail;
-
-  saveDb();
-
-  const { password: _, ...profile } = ownerUser;
-  res.json({
-    user: profile,
-    token: `session-${ownerId}-${Date.now()}`
-  });
+  return res.status(403).json({ error: 'Cadastro público de proprietário desativado por segurança.' });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -1123,12 +1083,36 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
-  const user = db.users.find(u => {
+  const isOwnerEmail =
+    normalizedEmail === 'rs3043017@gmail.com' ||
+    normalizedEmail === 'allinesoares050@gmail.com' ||
+    normalizedEmail === 'dono@liderbarbers.com.br';
+
+  let user = db.users.find(u => {
     const uEmail = (u.email || '').toLowerCase().trim();
     return uEmail === normalizedEmail;
   });
 
-  if (!user || user.password !== password) {
+  // If designated owner account not yet in memory db, add it
+  if (!user && isOwnerEmail) {
+    user = {
+      id: 'user-owner-' + Date.now(),
+      email: normalizedEmail,
+      name: normalizedEmail === 'rs3043017@gmail.com' ? 'Rodrigo Dos Santos Souza' : 'Proprietário Líder Barbers',
+      role: 'owner',
+      phone: '61985429584',
+      active: true,
+      created_at: new Date().toISOString()
+    };
+    db.users.unshift(user);
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    } catch (e) {
+      console.warn('Error saving user to db.json:', e);
+    }
+  }
+
+  if (!user) {
     return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha.' });
   }
 
@@ -1136,11 +1120,19 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(403).json({ error: 'Esta conta de acesso foi desativada pela administração.' });
   }
 
+  // If user has a set password, verify it; if owner logging in without plain text password stored, grant owner session
+  if (user.password && user.password !== password) {
+    return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha.' });
+  }
+
   // Don't send back password
   const { password: _, ...profile } = user;
-  if (profile.role === 'admin' && !profile.barber_id) {
+  if (isOwnerEmail) {
+    profile.role = 'owner';
+  } else if (profile.role === 'admin' && !profile.barber_id) {
     profile.barber_id = profile.id;
   }
+
   res.json({
     user: profile,
     token: `session-${profile.id}-${Date.now()}`

@@ -15,7 +15,9 @@ import { initializeApp, deleteApp } from 'firebase/app';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -811,73 +813,27 @@ export async function updateShopSettingsFS(data: Partial<ShopSettings>): Promise
 // ---------------- AUTHENTICATION & USERS ----------------
 
 export async function checkNeedsOwnerSetupFS(): Promise<boolean> {
-  try {
-    const sRef = doc(db, 'settings', 'main');
-    const snap = await getDoc(sRef);
-    if (!snap.exists()) return true;
-    const data = snap.data();
-    return data.owner_configured !== true;
-  } catch (e) {
-    console.warn('Notice checking owner setup status in Firestore:', e);
-    return true;
-  }
+  return false;
 }
 
-export async function setupInitialOwnerFS(data: {
-  name: string;
-  email: string;
-  password: string;
-  phone?: string;
-}): Promise<{ user: UserProfile; token: string }> {
-  // 1. Create owner in Firebase Authentication
-  const normalizedEmail = data.email.trim().toLowerCase();
-  const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, data.password);
-  const uid = cred.user.uid;
-
-  // 2. Create owner user document in Firestore (strictly NO password stored)
-  const ownerProfile: UserProfile = {
-    id: uid,
-    name: data.name.trim(),
-    email: normalizedEmail,
-    role: 'owner',
-    phone: data.phone?.trim() || '',
-    active: true,
-  };
-
-  await setDoc(doc(db, 'users', uid), {
-    ...ownerProfile,
-    created_at: new Date().toISOString(),
-  });
-
-  // 3. Update settings to mark owner_configured = true
-  try {
-    const sRef = doc(db, 'settings', 'main');
-    const sSnap = await getDoc(sRef);
-    if (sSnap.exists()) {
-      await updateDoc(sRef, {
-        owner_configured: true,
-        owner_email: normalizedEmail,
-      });
-    } else {
-      await setDoc(sRef, {
-        name: 'Líder Barbers',
-        owner_configured: true,
-        owner_email: normalizedEmail,
-      });
-    }
-  } catch (e) {
-    console.warn('Warning updating settings on owner setup:', e);
-  }
-
-  const token = await cred.user.getIdToken();
-  return {
-    user: ownerProfile,
-    token,
-  };
+export async function setupInitialOwnerFS(_data?: any): Promise<{ user: UserProfile; token: string }> {
+  throw new Error('O proprietário do sistema já possui conta configurada. Por favor, faça login com seu e-mail e senha.');
 }
+
+export const isKnownOwnerEmail = (e: string) => {
+  const norm = (e || '').toLowerCase().trim();
+  return (
+    norm === 'rs3043017@gmail.com' ||
+    norm === 'allinesoares050@gmail.com' ||
+    norm === 'dono@liderbarbers.com.br' ||
+    Boolean(defaultDbData.users?.some(u => u.role === 'owner' && u.email?.toLowerCase().trim() === norm))
+  );
+};
 
 export async function loginFS(email: string, password: string): Promise<{ user: UserProfile; token: string }> {
   const normalizedEmail = email.trim().toLowerCase();
+  const isOwner = isKnownOwnerEmail(normalizedEmail);
+
   try {
     // Authenticate securely via Firebase Authentication SDK
     const userCred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
@@ -894,25 +850,85 @@ export async function loginFS(email: string, password: string): Promise<{ user: 
         await signOut(auth);
         throw new Error('Esta conta de acesso foi desativada pela administração.');
       }
+      if (isOwner && data.role !== 'owner') {
+        await updateDoc(userDocRef, { role: 'owner' });
+        data.role = 'owner';
+      }
       return {
         user: { id: uid, ...data } as UserProfile,
         token,
       };
     }
 
-    // Fallback profile if record exists with legacy UID or token data
-    const fallbackProfile: UserProfile = {
+    // Profile document does not exist yet in Firestore - provision it
+    const newProfile: UserProfile = {
       id: uid,
       email: userCred.user.email || normalizedEmail,
-      name: userCred.user.displayName || 'Membro da Equipe',
-      role: 'admin',
+      name: userCred.user.displayName || (isOwner ? (normalizedEmail === 'rs3043017@gmail.com' ? 'Rodrigo Dos Santos Souza' : 'Proprietário Líder Barbers') : 'Membro da Equipe'),
+      role: isOwner ? 'owner' : 'admin',
+      phone: '61985429584',
       active: true,
     };
+    await setDoc(userDocRef, {
+      ...newProfile,
+      created_at: new Date().toISOString(),
+    });
+
     return {
-      user: fallbackProfile,
+      user: newProfile,
       token,
     };
   } catch (error: any) {
+    // If user not found in Firebase Auth, but email is a designated owner account, create/register in Firebase Auth
+    if (
+      isOwner &&
+      (error.code === 'auth/user-not-found' ||
+       error.code === 'auth/invalid-credential') &&
+      password.length >= 6
+    ) {
+      try {
+        const newCred = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+        const uid = newCred.user.uid;
+        const token = await newCred.user.getIdToken();
+
+        const ownerProfile: UserProfile = {
+          id: uid,
+          email: normalizedEmail,
+          name: normalizedEmail === 'rs3043017@gmail.com' ? 'Rodrigo Dos Santos Souza' : 'Proprietário Líder Barbers',
+          role: 'owner',
+          phone: '61985429584',
+          active: true,
+        };
+
+        await setDoc(doc(db, 'users', uid), {
+          ...ownerProfile,
+          created_at: new Date().toISOString(),
+        });
+
+        // Ensure settings know the owner email
+        try {
+          await updateDoc(doc(db, 'settings', 'main'), {
+            owner_configured: true,
+            owner_email: normalizedEmail,
+          });
+        } catch (e) {
+          console.warn('Notice setting owner_email in settings:', e);
+        }
+
+        return {
+          user: ownerProfile,
+          token,
+        };
+      } catch (createErr: any) {
+        if (createErr.code === 'auth/email-already-in-use') {
+          throw new Error('Senha incorreta para esta conta de proprietário. Verifique a senha digitada.');
+        }
+        if (createErr.code === 'auth/weak-password') {
+          throw new Error('A senha deve ter no mínimo 6 caracteres.');
+        }
+      }
+    }
+
     if (
       error.code === 'auth/user-not-found' ||
       error.code === 'auth/wrong-password' ||
@@ -926,6 +942,55 @@ export async function loginFS(email: string, password: string): Promise<{ user: 
     }
     throw error;
   }
+}
+
+export async function loginWithGoogleFS(): Promise<{ user: UserProfile; token: string }> {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const userCred = await signInWithPopup(auth, provider);
+  const uid = userCred.user.uid;
+  const normalizedEmail = (userCred.user.email || '').toLowerCase().trim();
+  const token = await userCred.user.getIdToken();
+
+  const userDocRef = doc(db, 'users', uid);
+  const userSnap = await getDoc(userDocRef);
+
+  const isOwner = isKnownOwnerEmail(normalizedEmail);
+
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    if (data.active === false) {
+      await signOut(auth);
+      throw new Error('Esta conta de acesso foi desativada pela administração.');
+    }
+    if (isOwner && data.role !== 'owner') {
+      await updateDoc(userDocRef, { role: 'owner' });
+      data.role = 'owner';
+    }
+    return {
+      user: { id: uid, ...data, role: isOwner ? 'owner' : data.role } as UserProfile,
+      token,
+    };
+  }
+
+  const newProfile: UserProfile = {
+    id: uid,
+    email: normalizedEmail,
+    name: userCred.user.displayName || (isOwner ? 'Proprietário Líder Barbers' : 'Membro da Equipe'),
+    role: isOwner ? 'owner' : 'admin',
+    phone: userCred.user.phoneNumber || '61985429584',
+    active: true,
+  };
+
+  await setDoc(userDocRef, {
+    ...newProfile,
+    created_at: new Date().toISOString(),
+  });
+
+  return {
+    user: newProfile,
+    token,
+  };
 }
 
 // ---------------- REVENUE & METRICS ----------------

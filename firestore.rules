@@ -87,13 +87,13 @@ service cloud.firestore {
     }
 
     // Users and Staff accounts (STRICT SECURITY - NO PUBLIC ACCESS)
-    // Only the authenticated user can read their own document, and admin/owner can read/write
+    // Only the authenticated user can read/write their own document, and admin/owner can manage
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isOwnerOrAdmin());
       allow list: if isOwnerOrAdmin();
-      allow create: if isOwnerOrAdmin()
-        || (isSignedIn() && request.auth.uid == userId && !isOwnerConfigured() && request.resource.data.role == 'owner');
-      allow update, delete: if isOwnerOrAdmin();
+      allow create: if isSignedIn() && (request.auth.uid == userId || isOwnerOrAdmin());
+      allow update: if isSignedIn() && (request.auth.uid == userId || isOwnerOrAdmin());
+      allow delete: if isOwnerOrAdmin();
     }
   }
 }

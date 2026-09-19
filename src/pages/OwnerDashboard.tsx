@@ -208,6 +208,16 @@ export const OwnerDashboard: React.FC = () => {
     );
   }
 
+  // Ensure owner accounts always have the owner role
+  const isOwnerEmail =
+    user.email?.toLowerCase().trim() === 'allinesoares050@gmail.com' ||
+    user.email?.toLowerCase().trim() === 'rs3043017@gmail.com' ||
+    user.email?.toLowerCase().trim() === 'dono@liderbarbers.com.br';
+
+  if (isOwnerEmail && user.role !== 'owner') {
+    user.role = 'owner';
+  }
+
   // If user is logged in as someone else (not owner), guide them
   if (user && user.role !== 'owner') {
     return (

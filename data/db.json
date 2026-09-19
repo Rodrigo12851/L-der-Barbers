@@ -6,7 +6,8 @@
     "hero_image_url": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80",
     "phone": "(11) 98765-4321",
     "address": "Av. Principal, 780",
-    "owner_configured": false
+    "owner_configured": true,
+    "owner_email": "rs3043017@gmail.com"
   },
   "services": [
     {
@@ -83,7 +84,7 @@
   "barbers": [
     {
       "id": "user-admin",
-      "name": "Administrador Liberdade",
+      "name": "Administrador",
       "nickname": "Administrador Liberdade (Admin)",
       "bio": "Administrador & Barbeiro Especialista",
       "photo_url": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=600&auto=format&fit=crop&q=80",
@@ -531,11 +532,30 @@
   ],
   "users": [
     {
+      "id": "user-owner-1789824404921",
+      "email": "rs3043017@gmail.com",
+      "name": "Rodrigo Dos Santos Souza",
+      "role": "owner",
+      "phone": "61985429584",
+      "active": true,
+      "created_at": "2026-09-19T13:26:44.921Z"
+    },
+    {
+      "id": "user-owner-alline",
+      "email": "allinesoares050@gmail.com",
+      "name": "Proprietário Líder Barbers",
+      "role": "owner",
+      "phone": "61985429584",
+      "active": true,
+      "created_at": "2026-09-19T13:46:00.000Z"
+    },
+    {
       "id": "user-admin",
       "email": "admin@liberdade.com.br",
       "name": "Administrador",
       "role": "admin",
-      "active": true
+      "active": true,
+      "barber_id": "user-admin"
     },
     {
       "id": "user-marcos",
