@@ -54,15 +54,17 @@ export const HomePage: React.FC = () => {
             
             {/* Left Column: Heading & Call to Action */}
             <div className="lg:col-span-7 space-y-3.5 sm:space-y-5 lg:space-y-6 text-left">
-              <h1 className="font-cinzel text-[25px] xs:text-[27px] sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.15] sm:leading-[1.1]">
-                <span className="block whitespace-nowrap">A ARTE DO CORTE,</span>
-                <span className="block bg-gradient-to-r from-[#f5d77f] via-[#d4af37] to-[#aa8222] bg-clip-text text-transparent">
+              <h1 className="font-cinzel text-[25px] xs:text-[27px] sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] sm:leading-[1.1]">
+                <span className="block whitespace-nowrap text-slate-900 dark:text-white">
+                  A ARTE DO CORTE,
+                </span>
+                <span className="block bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 dark:from-[#f5d77f] dark:via-[#d4af37] dark:to-[#aa8222] bg-clip-text text-transparent">
                   A PRECISÃO DA NAVALHA.
                 </span>
               </h1>
 
-              <p className="max-w-xl text-sm sm:text-base lg:text-lg text-neutral-300 font-normal leading-relaxed">
-                A <strong className="text-white">{settings.name || 'Líder Barbers'}</strong> une a clássica barbearia vintage ao conforto moderno. Escolha o serviço, selecione seu barbeiro e agende seu horário em menos de 1 minuto.
+              <p className="max-w-xl text-sm sm:text-base lg:text-lg text-slate-600 dark:text-gray-300 font-normal leading-relaxed">
+                A <strong className="text-slate-900 dark:text-white font-bold">{settings.name || 'Líder Barbers'}</strong> une a clássica barbearia vintage ao conforto moderno. Escolha o serviço, selecione seu barbeiro e agende seu horário em menos de 1 minuto.
               </p>
 
               {/* Action Buttons */}
@@ -78,10 +80,10 @@ export const HomePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/servicos')}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#2e3344] bg-[#14161f] px-5 py-2.5 sm:px-6 sm:py-3.5 text-xs sm:text-sm font-bold text-neutral-200 hover:text-white hover:border-[#d4af37]/50 transition cursor-pointer"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 dark:border-[#2e3344] dark:bg-[#14161f] dark:text-white dark:hover:text-white dark:hover:border-[#d4af37]/50 px-5 py-2.5 sm:px-6 sm:py-3.5 text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer"
                 >
                   <span>Ver Serviços & Preços</span>
-                  <ArrowRight className="w-4 h-4 text-[#d4af37]" />
+                  <ArrowRight className="w-4 h-4 text-amber-700 dark:text-[#d4af37]" />
                 </button>
               </div>
 
@@ -89,7 +91,7 @@ export const HomePage: React.FC = () => {
 
             {/* Right Column: Hero Visual Card */}
             <div className="lg:col-span-5 relative">
-              <div className="relative rounded-2xl border border-[#d4af37]/35 bg-[#14161f] p-2.5 sm:p-3 shadow-2xl shadow-black">
+              <div className="relative rounded-2xl border border-[#d4af37]/35 bg-white dark:bg-[#14161f] p-2.5 sm:p-3 shadow-xl">
                 <div className="relative aspect-[4/3] sm:aspect-[4/5] max-h-[350px] sm:max-h-none overflow-hidden rounded-xl bg-neutral-900">
                   <img
                     src={settings.hero_image_url || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80'}
@@ -99,18 +101,19 @@ export const HomePage: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0d0e11] via-transparent to-black/30" />
                   
                   {/* Floating badge inside image */}
-                  <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 rounded-xl border border-[#d4af37]/40 bg-[#12141c]/90 p-3 sm:p-3.5 backdrop-blur-md">
+                  <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 rounded-xl border border-slate-200/80 bg-white/95 text-slate-900 shadow-xl dark:border-[#d4af37]/40 dark:bg-[#12141c]/90 dark:text-white p-3 sm:p-3.5 backdrop-blur-md">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="flex items-center gap-1.5 text-xs text-[#f5d77f] font-semibold">
-                          <Star className="w-3.5 h-3.5 fill-[#d4af37] text-[#d4af37]" />
+                        <div className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-[#f5d77f] font-bold">
+                          <Star className="w-3.5 h-3.5 fill-amber-600 text-amber-600 dark:fill-[#d4af37] dark:text-[#d4af37]" />
                           <span>Experiência {settings.name || 'Líder Barbers'}</span>
                         </div>
-                        <h4 className="text-xs sm:text-sm font-bold text-white mt-0.5">Toalha Quente & Ozonioterapia</h4>
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-0.5">Toalha Quente & Ozonioterapia</h4>
                       </div>
                       <button
+                        type="button"
                         onClick={() => navigate('/agendar')}
-                        className="rounded-lg bg-[#d4af37] px-3 py-1.5 text-xs font-extrabold text-[#0d0e11] hover:brightness-110 transition cursor-pointer"
+                        className="rounded-lg bg-gradient-to-r from-[#d4af37] via-[#e5c158] to-[#aa8222] px-3 py-1.5 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 shadow-md transition cursor-pointer"
                       >
                         Reservar
                       </button>
@@ -279,15 +282,16 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* Simple CTA Bar */}
-      <section className="py-8 sm:py-12 bg-gradient-to-b from-[#11131a] to-[#0a0b0e] border-b border-[#232733] text-center">
+      <section className="py-8 sm:py-12 bg-gradient-to-b from-[#f8fafc] to-[#f1f5f9] dark:from-[#11131a] dark:to-[#0a0b0e] border-b border-[#e2e8f0] dark:border-[#232733] text-center">
         <div className="mx-auto max-w-4xl px-4">
-          <h3 className="font-cinzel text-xl sm:text-2xl lg:text-3xl font-black text-white">
+          <h3 className="font-cinzel text-xl sm:text-2xl lg:text-3xl font-black text-neutral-900 dark:text-white">
             PRONTO PARA RENOVAR SEU VISUAL?
           </h3>
-          <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-neutral-400 max-w-md mx-auto">
+          <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
             Verifique agora os horários disponíveis em tempo real com confirmação imediata.
           </p>
           <button
+            type="button"
             onClick={() => navigate('/agendar')}
             className="mt-4 sm:mt-6 inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#e5c158] to-[#aa8222] px-7 py-3 text-xs sm:text-sm font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 shadow-lg shadow-[#d4af37]/20 transition cursor-pointer"
           >

@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-text-main: #f3f4f6;
+  --color-text-muted: #9ca3af;
+  --color-bg-main: #0d0e11;
+  --color-bg-card: #14161f;
+}
+
+html.light {
+  --color-text-main: #0f172a;
+  --color-text-muted: #475569;
+  --color-bg-main: #f8fafc;
+  --color-bg-card: #ffffff;
+  color-scheme: light;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -150,15 +167,45 @@ html.light .bg-\[\#202538\] {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
 }
 
-/* 4. Gradientes escuros adaptados para claro */
-html.light .from-\[\#161824\] { --tw-gradient-from: #ffffff !important; }
-html.light .via-\[\#13151f\] { --tw-gradient-via: #f8fafc !important; }
-html.light .to-\[\#101118\] { --tw-gradient-to: #f1f5f9 !important; }
-html.light .from-\[\#141722\] { --tw-gradient-from: #ffffff !important; }
-html.light .via-\[\#1a1e2d\] { --tw-gradient-via: #f8fafc !important; }
-html.light .to-\[\#141722\] { --tw-gradient-to: #ffffff !important; }
-html.light .from-\[\#1a1d29\] { --tw-gradient-from: #ffffff !important; }
-html.light .to-\[\#12141c\] { --tw-gradient-to: #f8fafc !important; }
+/* 4. Gradientes escuros adaptados para claro e cards flutuantes */
+html.light .from-\[\#161824\],
+html.light .from-\[\#11131a\],
+html.light .from-\[\#141722\],
+html.light .from-\[\#151722\],
+html.light .from-\[\#171923\],
+html.light .from-\[\#171924\],
+html.light .from-\[\#1a1d29\],
+html.light .from-\[\#1c1d28\] {
+  --tw-gradient-from: #ffffff !important;
+  --tw-gradient-to: rgba(255, 255, 255, 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html.light .via-\[\#13151f\],
+html.light .via-\[\#151722\],
+html.light .via-\[\#1a1e2d\] {
+  --tw-gradient-stops: var(--tw-gradient-from), #f8fafc var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+
+html.light .to-\[\#101118\],
+html.light .to-\[\#0a0b0e\],
+html.light .to-\[\#12141c\],
+html.light .to-\[\#141722\],
+html.light .to-\[\#151722\] {
+  --tw-gradient-to: #f1f5f9 !important;
+}
+
+/* Badges e cartões flutuantes sobre imagens e fotos */
+html.light [class*="bg-[#12141c]/90"],
+html.light [class*="bg-[#0d0e11]/85"],
+html.light [class*="bg-[#16181f]/95"],
+html.light [class*="bg-black/60"],
+html.light [class*="bg-black/70"],
+html.light [class*="bg-black/80"] {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(212, 175, 55, 0.45) !important;
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.1) !important;
+}
 
 /* 5. Bordas escuras adaptadas para linhas suaves (#e2e8f0) */
 html.light .border-\[\#232733\],
@@ -217,84 +264,217 @@ html.light select option {
   color: #0f172a !important;
 }
 
-/* 7. Tipografia de Alto Contraste */
+/* 7. TIPOGRAFIA DE ALTO CONTRASTE (WCAG AAA)
+   Hierarquia óptica nítida, confortável para os olhos e sem tons apagados */
 html.light .text-white,
+html.light [class*="text-white"],
 html.light h1.text-white,
 html.light h2.text-white,
 html.light h3.text-white,
-html.light h4.text-white {
+html.light h4.text-white,
+html.light h5.text-white,
+html.light h6.text-white,
+html.light strong.text-white,
+html.light span.text-white,
+html.light p.text-white {
   color: #0f172a !important;
 }
 
-html.light .text-neutral-100 {
+html.light .text-slate-900,
+html.light .text-gray-900,
+html.light .text-neutral-900 {
   color: #0f172a !important;
 }
 
-html.light .text-neutral-200 {
+html.light .text-slate-800,
+html.light .text-gray-800,
+html.light .text-neutral-800 {
   color: #1e293b !important;
 }
 
-html.light .text-neutral-300 {
+html.light .text-slate-700,
+html.light .text-gray-700,
+html.light .text-neutral-700 {
   color: #334155 !important;
 }
 
-html.light .text-neutral-400 {
-  color: #64748b !important;
+html.light .text-slate-600,
+html.light .text-gray-600,
+html.light .text-neutral-600 {
+  color: #475569 !important;
 }
 
-html.light .text-neutral-500 {
-  color: #64748b !important;
+html.light .text-neutral-100,
+html.light [class*="text-neutral-100"],
+html.light .text-gray-100,
+html.light [class*="text-gray-100"] {
+  color: #0f172a !important;
 }
 
-html.light .text-gray-300 {
+html.light .text-neutral-200,
+html.light [class*="text-neutral-200"],
+html.light .text-gray-200,
+html.light [class*="text-gray-200"] {
+  color: #1e293b !important;
+}
+
+html.light .text-neutral-300,
+html.light [class*="text-neutral-300"],
+html.light .text-gray-300,
+html.light [class*="text-gray-300"] {
   color: #334155 !important;
 }
 
-html.light .text-gray-400 {
-  color: #64748b !important;
+/* Subtítulos, descrições e textos secundários com excelente contraste (Slate-600) */
+html.light .text-neutral-400,
+html.light [class*="text-neutral-400"],
+html.light .text-gray-400,
+html.light [class*="text-gray-400"],
+html.light .text-neutral-500,
+html.light [class*="text-neutral-500"],
+html.light .text-gray-500,
+html.light [class*="text-gray-500"],
+html.light .text-\[\#9ca3af\] {
+  color: #475569 !important;
 }
 
-/* Ouro refinado no Modo Claro (alto contraste e nitidez) */
+/* 8. OURO NOBRE & ÂMBAR NO MODO CLARO
+   Substitui o ouro claro brilhante por um tom âmbar/bronze profundo e luxuoso,
+   com contraste impecável (>7:1) contra fundos brancos e claros */
 html.light .text-\[\#f5d77f\] {
-  color: #a16207 !important;
+  color: #854d0e !important;
+  font-weight: 700;
 }
 
 html.light .text-\[\#d4af37\] {
-  color: #a16207 !important;
+  color: #854d0e !important;
 }
 
-html.light .text-amber-400 {
-  color: #b45309 !important;
+html.light .text-amber-300,
+html.light .text-amber-400,
+html.light .text-yellow-400 {
+  color: #92400e !important;
 }
 
-/* Cores de status no modo claro */
-html.light .text-emerald-400 {
-  color: #047857 !important;
-}
-html.light .text-rose-400 {
-  color: #be123c !important;
-}
-html.light .text-blue-400 {
-  color: #1d4ed8 !important;
+/* Gradientes de texto decorativos (ex: "A PRECISÃO DA NAVALHA.") */
+html.light .bg-clip-text,
+html.light [class*="bg-clip-text"] {
+  background-image: linear-gradient(135deg, #78350f 0%, #b45309 45%, #854d0e 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
 }
 
-/* Proteção de botões com gradiente dourado (preservam texto escuro característico) */
+/* 9. BOTÕES & INTERAÇÕES NO MODO CLARO */
+/* Botões secundários Outline / Fundo Branco (ex: "Ver Serviços & Preços") */
+html.light button.border-slate-300,
+html.light .bg-white.text-slate-900,
+html.light [class*="border-slate-300"] {
+  color: #0f172a !important;
+}
+
+/* Proteção dos botões dourados principais: preservam texto escuro característico */
 html.light [class*="bg-gradient-to-r"][class*="from-[#d4af37]"],
-html.light [class*="bg-gradient-to-r"][class*="from-[#d4af37]"] * {
+html.light [class*="bg-gradient-to-r"][class*="from-[#d4af37]"] *,
+html.light .bg-\[\#d4af37\],
+html.light .bg-\[\#d4af37\] * {
   color: #0d0e11 !important;
 }
 
-html.light .bg-emerald-500.text-black,
-html.light .bg-emerald-500.text-black * {
-  color: #000000 !important;
+/* Botões de serviço "Agendar" nos cards de serviço */
+html.light .bg-\[\#1c202d\].border-\[\#d4af37\]\/40 {
+  background-color: #fefce8 !important;
+  border-color: rgba(212, 175, 55, 0.6) !important;
+  color: #854d0e !important;
 }
 
-html.light .bg-rose-500,
-html.light .bg-rose-600 {
-  color: #ffffff !important;
+/* Previne que texto fique branco no hover sobre fundo claro */
+html.light .hover\:text-white:hover,
+html.light .group:hover .group-hover\:text-white {
+  color: #0f172a !important;
 }
 
-/* 8. Tabelas e Cabeçalhos de Dados */
+html.light .hover\:text-\[\#f5d77f\]:hover,
+html.light .group:hover .group-hover\:text-\[\#f5d77f\] {
+  color: #854d0e !important;
+}
+
+html.light .hover\:text-\[\#d4af37\]:hover,
+html.light .group:hover .group-hover\:text-\[\#d4af37\] {
+  color: #854d0e !important;
+}
+
+/* Fundo em hover para itens de lista e botões secundários */
+html.light .hover\:bg-\[\#14161f\]:hover,
+html.light .hover\:bg-\[\#181a24\]:hover,
+html.light .hover\:bg-\[\#1f2230\]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* 10. BADGES E STATUS NO MODO CLARO (Pastéis Suaves com Texto Escuro Legível) */
+/* Sucesso / Verde / Confirmado */
+html.light .text-emerald-300,
+html.light .text-emerald-400 {
+  color: #047857 !important;
+}
+html.light [class*="bg-emerald-950"],
+html.light [class*="bg-emerald-900"],
+html.light [class*="bg-emerald-500/10"],
+html.light [class*="bg-emerald-500/15"],
+html.light [class*="bg-emerald-500/20"],
+html.light [class*="bg-emerald-600/20"] {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+/* Cancelado / Erro / Vermelho */
+html.light .text-rose-300,
+html.light .text-rose-400 {
+  color: #be123c !important;
+}
+html.light [class*="bg-rose-950"],
+html.light [class*="bg-rose-900"],
+html.light [class*="bg-rose-500/10"],
+html.light [class*="bg-rose-500/15"],
+html.light [class*="bg-rose-500/20"],
+html.light [class*="bg-rose-600/20"],
+html.light .bg-\[\#1e1518\],
+html.light .bg-\[\#261517\] {
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #991b1b !important;
+}
+
+/* Pendente / Aviso / Âmbar */
+html.light [class*="bg-amber-950"],
+html.light [class*="bg-amber-900"],
+html.light [class*="bg-amber-500/10"],
+html.light [class*="bg-amber-500/15"],
+html.light [class*="bg-amber-500/20"],
+html.light [class*="bg-amber-600/20"] {
+  background-color: #fefce8 !important;
+  border-color: #fef08a !important;
+  color: #854d0e !important;
+}
+
+/* Informativo / Azul */
+html.light .text-blue-300,
+html.light .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+html.light [class*="bg-blue-950"],
+html.light [class*="bg-blue-900"],
+html.light [class*="bg-blue-500/10"],
+html.light [class*="bg-blue-500/15"],
+html.light [class*="bg-blue-500/20"] {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1e40af !important;
+}
+
+/* 11. TABELAS E CABEÇALHOS DE DADOS */
 html.light thead {
   background-color: #f1f5f9 !important;
 }
