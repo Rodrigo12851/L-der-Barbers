@@ -85,7 +85,7 @@
     {
       "id": "user-admin",
       "name": "Administrador",
-      "nickname": "Administrador Liberdade (Admin)",
+      "nickname": "Administrador (Admin)",
       "bio": "Administrador & Barbeiro Especialista",
       "photo_url": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=600&auto=format&fit=crop&q=80",
       "specialties": [
@@ -96,7 +96,7 @@
       ],
       "active": true,
       "phone": "",
-      "email": "admin@liberdade.com.br",
+      "email": "admin@lider.com.br",
       "commission_rate": 100,
       "rating": 5,
       "reviews_count": 48
@@ -532,8 +532,9 @@
   ],
   "users": [
     {
-      "id": "user-owner-1789824404921",
+      "id": "user-owner-rodrigo",
       "email": "rs3043017@gmail.com",
+      "password": "rs20061991@",
       "name": "Rodrigo Dos Santos Souza",
       "role": "owner",
       "phone": "61985429584",
@@ -541,21 +542,13 @@
       "created_at": "2026-09-19T13:26:44.921Z"
     },
     {
-      "id": "user-owner-alline",
-      "email": "allinesoares050@gmail.com",
-      "name": "Proprietário Líder Barbers",
-      "role": "owner",
-      "phone": "61985429584",
-      "active": true,
-      "created_at": "2026-09-19T13:46:00.000Z"
-    },
-    {
       "id": "user-admin",
-      "email": "admin@liberdade.com.br",
+      "email": "admin@lider.com.br",
       "name": "Administrador",
       "role": "admin",
       "active": true,
-      "barber_id": "user-admin"
+      "barber_id": "user-admin",
+      "phone": ""
     },
     {
       "id": "user-marcos",

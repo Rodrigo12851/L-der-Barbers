@@ -94,6 +94,15 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
       setError('Por favor preencha e-mail e senha.');
       return;
     }
+
+    if (role === 'owner') {
+      const normEmail = email.trim().toLowerCase();
+      if (normEmail !== 'rs3043017@gmail.com') {
+        setError('Apenas o e-mail oficial do proprietário (rs3043017@gmail.com) tem acesso à área do dono.');
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
 
@@ -114,7 +123,10 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
     setLoading(true);
     setError(null);
     try {
-      await loginWithGoogle();
+      const res = await loginWithGoogle();
+      if (role === 'owner' && res?.user?.email?.toLowerCase().trim() !== 'rs3043017@gmail.com') {
+        throw new Error('Apenas o e-mail oficial do proprietário (rs3043017@gmail.com) tem acesso à área do dono.');
+      }
       if (onLoginSuccess) {
         onLoginSuccess();
       }

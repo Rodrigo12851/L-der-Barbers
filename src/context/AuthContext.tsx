@@ -16,6 +16,7 @@ interface AuthContextType {
   needsOwnerSetup: boolean;
   refreshOwnerSetupStatus: () => Promise<boolean>;
   setupOwner: (data: { name: string; email: string; password: string; phone?: string }) => Promise<void>;
+  updateUser: (updatedUser: UserProfile) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   needsOwnerSetup: false,
   refreshOwnerSetupStatus: async () => false,
   setupOwner: async () => {},
+  updateUser: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -82,12 +84,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               } catch (e) {
                 console.warn('Error updating owner role in doc:', e);
               }
+            } else if (!isOwner && profile.role === 'owner') {
+              profile.role = 'customer';
             }
           } else {
             profile = {
               id: fbUser.uid,
               email: email,
-              name: fbUser.displayName || (isOwner ? 'Proprietário Líder Barbers' : 'Membro da Equipe'),
+              name: fbUser.displayName || (isOwner ? 'Rodrigo Dos Santos Souza' : 'Membro da Equipe'),
               role: isOwner ? 'owner' : 'admin',
               active: true,
             };
@@ -117,6 +121,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (parsed && parsed.id && parsed.role) {
                 if (isKnownOwnerEmail(parsed.email) && parsed.role !== 'owner') {
                   parsed.role = 'owner';
+                  localStorage.setItem('liberdade_user', JSON.stringify(parsed));
+                } else if (!isKnownOwnerEmail(parsed.email) && parsed.role === 'owner') {
+                  parsed.role = 'customer';
                   localStorage.setItem('liberdade_user', JSON.stringify(parsed));
                 }
                 setUser(parsed);
@@ -169,6 +176,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNeedsOwnerSetup(false);
   };
 
+  const updateUser = (updatedUser: UserProfile) => {
+    setUser(updatedUser);
+    try {
+      localStorage.setItem('liberdade_user', JSON.stringify(updatedUser));
+    } catch {
+      // storage unavailable
+    }
+  };
+
   const logout = () => {
     try {
       signOut(auth);
@@ -192,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         needsOwnerSetup,
         refreshOwnerSetupStatus,
         setupOwner,
+        updateUser,
       }}
     >
       {children}

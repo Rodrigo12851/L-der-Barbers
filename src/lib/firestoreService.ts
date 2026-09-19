@@ -33,7 +33,8 @@ import {
   AdminAccount,
   BarberAccount,
   BarberRevenueMetrics,
-  OwnerOverviewMetrics
+  OwnerOverviewMetrics,
+  OwnerAccount
 } from '../types';
 import defaultDbData from '../../data/db.json';
 
@@ -95,8 +96,48 @@ export async function ensureFirestoreSeeded(): Promise<void> {
         batch.set(doc(db, 'appointments', a.id), a);
       }
 
+      // Initial Users (including registered passwords)
+      if (defaultDbData.users) {
+        for (const u of defaultDbData.users) {
+          batch.set(doc(db, 'users', u.id), u);
+        }
+      }
+
       await batch.commit();
       console.log('Firebase Firestore seeded successfully!');
+    }
+
+    // Sync sole owner credentials (rs3043017@gmail.com / rs20061991@) to Firestore
+    try {
+      const snap = await getDocs(collection(db, 'users'));
+      const rodrigoDoc = snap.docs.find(d => (d.data().email || '').trim().toLowerCase() === 'rs3043017@gmail.com');
+      const rodrigoId = rodrigoDoc ? rodrigoDoc.id : 'user-owner-rodrigo';
+      
+      await setDoc(doc(db, 'users', rodrigoId), {
+        id: rodrigoId,
+        email: 'rs3043017@gmail.com',
+        password: 'rs20061991@',
+        name: 'Rodrigo Dos Santos Souza',
+        role: 'owner',
+        phone: '61985429584',
+        active: true,
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+
+      // Demote/inactivate any other user with owner role in Firestore
+      for (const d of snap.docs) {
+        const u = d.data();
+        const email = (u.email || '').trim().toLowerCase();
+        if (email !== 'rs3043017@gmail.com' && u.role === 'owner') {
+          await updateDoc(doc(db, 'users', d.id), {
+            role: 'former_owner',
+            active: false,
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Notice ensuring sole owner in Firestore:', e);
     }
     isSeeded = true;
   } catch (err) {
@@ -822,12 +863,7 @@ export async function setupInitialOwnerFS(_data?: any): Promise<{ user: UserProf
 
 export const isKnownOwnerEmail = (e: string) => {
   const norm = (e || '').toLowerCase().trim();
-  return (
-    norm === 'rs3043017@gmail.com' ||
-    norm === 'allinesoares050@gmail.com' ||
-    norm === 'dono@liderbarbers.com.br' ||
-    Boolean(defaultDbData.users?.some(u => u.role === 'owner' && u.email?.toLowerCase().trim() === norm))
-  );
+  return norm === 'rs3043017@gmail.com';
 };
 
 export const normalizeAuthPassword = (pwd: string) => {
@@ -838,167 +874,259 @@ export const normalizeAuthPassword = (pwd: string) => {
 };
 
 export async function loginFS(email: string, password: string): Promise<{ user: UserProfile; token: string }> {
-  const normalizedEmail = email.trim().toLowerCase();
-  const isOwner = isKnownOwnerEmail(normalizedEmail);
-  const normalizedPassword = normalizeAuthPassword(password);
+  const normalizedEmail = (email || '').trim().toLowerCase();
   const rawPass = (password || '').trim();
 
-  // 1. Validação de credenciais do Proprietário
-  if (isOwner) {
-    const isOwnerPassValid =
-      rawPass.toLowerCase() === 'dona' ||
-      rawPass.toLowerCase() === 'dono' ||
-      rawPass === '123456' ||
-      rawPass === 'lider2026' ||
-      rawPass === 'admin' ||
-      rawPass.length >= 4;
+  await ensureFirestoreSeeded();
 
-    if (!isOwnerPassValid) {
-      throw new Error('E-mail ou senha incorretos.');
+  // 1. Procurar usuário no Firestore
+  let userDoc: any = null;
+  let uid = '';
+
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    const matchedDoc = snap.docs.find(d => {
+      const data = d.data();
+      return (data.email || '').trim().toLowerCase() === normalizedEmail;
+    });
+    if (matchedDoc) {
+      userDoc = matchedDoc.data();
+      uid = matchedDoc.id;
     }
+  } catch (e) {
+    console.warn('Notice querying users from Firestore:', e);
+  }
 
-    // Tentar autenticação no Firebase Auth
-    try {
-      const userCred = await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
-      const uid = userCred.user.uid;
-      const token = await userCred.user.getIdToken();
+  // 2. Se ainda não encontrado no Firestore, procurar na base de dados inicial
+  if (!userDoc && defaultDbData.users) {
+    const match = defaultDbData.users.find(u => (u.email || '').trim().toLowerCase() === normalizedEmail) as any;
+    if (match) {
+      userDoc = match;
+      uid = match.id;
+    }
+  }
 
-      const userDocRef = doc(db, 'users', uid);
-      const userSnap = await getDoc(userDocRef);
-      let profile: UserProfile;
-
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        profile = { id: uid, ...data, role: 'owner' } as UserProfile;
-        if (data.role !== 'owner') {
-          await updateDoc(userDocRef, { role: 'owner' });
-        }
-      } else {
-        profile = {
-          id: uid,
-          email: normalizedEmail,
-          name: normalizedEmail === 'rs3043017@gmail.com' ? 'Rodrigo Dos Santos Souza' : 'Proprietário Líder Barbers',
-          role: 'owner',
-          phone: '61985429584',
-          active: true,
-        };
-        await setDoc(userDocRef, { ...profile, created_at: new Date().toISOString() });
-      }
-
-      return { user: profile, token };
-    } catch (fbErr: any) {
-      // Se a senha foi explicitamente recusada por incorreta no Firebase Auth:
-      if (fbErr.code === 'auth/wrong-password') {
-        throw new Error('E-mail ou senha incorretos.');
-      }
-
-      // Se o usuário não existir no Firebase Auth, tenta registrar silenciosamente
-      if (fbErr.code === 'auth/user-not-found' || fbErr.code === 'auth/invalid-credential') {
-        try {
-          const newCred = await createUserWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
-          const uid = newCred.user.uid;
-          const token = await newCred.user.getIdToken();
-          const ownerProfile: UserProfile = {
-            id: uid,
-            email: normalizedEmail,
-            name: normalizedEmail === 'rs3043017@gmail.com' ? 'Rodrigo Dos Santos Souza' : 'Proprietário Líder Barbers',
-            role: 'owner',
-            phone: '61985429584',
-            active: true,
-          };
-          await setDoc(doc(db, 'users', uid), { ...ownerProfile, created_at: new Date().toISOString() });
-          return { user: ownerProfile, token };
-        } catch {
-          // Continua para a sessão direta do dono abaixo
-        }
-      }
-
-      // Sessão direta autorizada e transparente para o proprietário com credencial correta
-      const uid = 'owner-' + normalizedEmail.replace(/[^a-zA-Z0-9]/g, '_');
-      const ownerProfile: UserProfile = {
-        id: uid,
-        email: normalizedEmail,
-        name: normalizedEmail === 'rs3043017@gmail.com' ? 'Rodrigo Dos Santos Souza' : 'Proprietário Líder Barbers',
+  // Se for o e-mail oficial do proprietário rs3043017@gmail.com, garantir credenciais
+  if (normalizedEmail === 'rs3043017@gmail.com') {
+    if (!userDoc) {
+      userDoc = {
+        id: 'user-owner-rodrigo',
+        email: 'rs3043017@gmail.com',
+        password: 'rs20061991@',
+        name: 'Rodrigo Dos Santos Souza',
         role: 'owner',
         phone: '61985429584',
-        active: true,
+        active: true
       };
-
-      try {
-        await setDoc(doc(db, 'users', uid), { ...ownerProfile, updated_at: new Date().toISOString() }, { merge: true });
-      } catch (e) {
-        console.warn('Notice saving owner profile in Firestore:', e);
+      uid = 'user-owner-rodrigo';
+    } else {
+      userDoc.role = 'owner';
+      // Aceita a senha definida pelo usuário rs20061991@ ou se tiver sido atualizada no doc
+      if (!userDoc.password) {
+        userDoc.password = 'rs20061991@';
       }
-
-      return {
-        user: ownerProfile,
-        token: 'owner-session-' + Date.now(),
-      };
     }
   }
 
-  // 2. Validação para Administradores e Barbeiros
+  if (!userDoc) {
+    throw new Error('E-mail ou senha incorretos. Apenas usuários e senhas cadastrados são aceitos.');
+  }
+
+  // Restrição estrita de papel: Nenhum outro e-mail além de rs3043017@gmail.com pode ter role owner
+  if (userDoc.role === 'owner' && normalizedEmail !== 'rs3043017@gmail.com') {
+    throw new Error('Apenas o e-mail oficial do proprietário (rs3043017@gmail.com) tem permissão de acesso à área do dono.');
+  }
+
+  if (userDoc.active === false) {
+    throw new Error('Esta conta de acesso foi desativada pela administração.');
+  }
+
+  // 3. Verificação ESTRITA da senha: SEM VARIAÇÕES! Apenas a senha cadastrada é aceita
+  const expectedPassword = normalizedEmail === 'rs3043017@gmail.com' ? (userDoc.password || 'rs20061991@') : userDoc.password;
+  if (!expectedPassword || expectedPassword !== rawPass) {
+    throw new Error('E-mail ou senha incorretos. Apenas a senha cadastrada é aceita.');
+  }
+
+  // 4. Perfil autorizado
+  const profile: UserProfile = {
+    id: uid,
+    email: normalizedEmail,
+    name: userDoc.name || (userDoc.role === 'owner' ? 'Proprietário' : 'Usuário'),
+    role: userDoc.role as any,
+    phone: userDoc.phone || '',
+    barber_id: userDoc.barber_id,
+    active: true,
+  };
+
+  // Se o Firebase Auth estiver disponível, manter a sessão do Firebase sincronizada
   try {
-    const userCred = await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
-    const uid = userCred.user.uid;
-    const token = await userCred.user.getIdToken();
-
-    const userDocRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userDocRef);
-
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      if (data.active === false) {
-        await signOut(auth);
-        throw new Error('Esta conta de acesso foi desativada pela administração.');
-      }
-      return {
-        user: { id: uid, ...data } as UserProfile,
-        token,
-      };
-    }
-
-    const newProfile: UserProfile = {
-      id: uid,
-      email: userCred.user.email || normalizedEmail,
-      name: userCred.user.displayName || 'Membro da Equipe',
-      role: 'admin',
-      phone: '61985429584',
-      active: true,
-    };
-    await setDoc(userDocRef, { ...newProfile, created_at: new Date().toISOString() });
-    return { user: newProfile, token };
-  } catch (error: any) {
-    // Verificar nas contas sementes do sistema se o provedor do Firebase não estiver ativo
-    const match = defaultDbData.users?.find(u => u.email?.toLowerCase().trim() === normalizedEmail) as any;
-    if (match) {
-      const isPassCorrect =
-        match.password === rawPass ||
-        (match.role === 'admin' && (rawPass === 'admin' || rawPass === 'dono')) ||
-        (match.role === 'barber' && (rawPass === 'barber' || rawPass === '123456'));
-
-      if (isPassCorrect) {
-        if (match.active === false) {
-          throw new Error('Esta conta de acesso foi desativada pela administração.');
-        }
-        const safeUser: UserProfile = {
-          id: match.id,
-          email: match.email,
-          name: match.name,
-          role: match.role as any,
-          phone: match.phone || '',
-          barber_id: match.barber_id,
-          active: Boolean(match.active),
-        };
-        return {
-          user: safeUser,
-          token: 'session-' + match.role + '-' + Date.now(),
-        };
-      }
-    }
-
-    throw new Error('E-mail ou senha incorretos.');
+    const normalizedPassword = normalizeAuthPassword(rawPass);
+    await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
+  } catch {
+    // A sessão local/Firestore autenticada é suficiente caso o Firebase Auth não esteja habilitado no Console
   }
+
+  return {
+    user: profile,
+    token: `session-${profile.id}-${Date.now()}`
+  };
+}
+
+// ---------------- OWNER ACCOUNTS & CREDENTIALS ----------------
+export async function getOwnerAccountsFS(): Promise<OwnerAccount[]> {
+  await ensureFirestoreSeeded();
+  let owners: OwnerAccount[] = [];
+
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    owners = snap.docs
+      .map(d => ({ id: d.id, ...d.data() } as any))
+      .filter(u => u.role === 'owner' && (u.email || '').trim().toLowerCase() === 'rs3043017@gmail.com')
+      .map(u => ({
+        id: u.id,
+        name: u.name || 'Rodrigo Dos Santos Souza',
+        email: u.email || 'rs3043017@gmail.com',
+        phone: u.phone || '61985429584',
+        active: u.active !== false,
+        role: 'owner' as const,
+        created_at: u.created_at || new Date().toISOString(),
+      }));
+  } catch (e) {
+    console.warn('Notice querying owners from Firestore:', e);
+  }
+
+  if (owners.length === 0) {
+    owners = [
+      {
+        id: 'user-owner-rodrigo',
+        name: 'Rodrigo Dos Santos Souza',
+        email: 'rs3043017@gmail.com',
+        phone: '61985429584',
+        active: true,
+        role: 'owner',
+        created_at: new Date().toISOString()
+      }
+    ];
+  }
+
+  return owners;
+}
+
+export async function updateOwnerCredentialsFS(data: {
+  currentEmail: string;
+  currentPassword: string;
+  newEmail: string;
+  newPassword: string;
+}): Promise<{ success: boolean; user: UserProfile; message: string }> {
+  const normalizedCurrent = (data.currentEmail || '').trim().toLowerCase();
+  const normalizedNew = (data.newEmail || '').trim().toLowerCase();
+  const rawCurrentPass = (data.currentPassword || '').trim();
+  const rawNewPass = (data.newPassword || '').trim();
+
+  if (!normalizedCurrent || !rawCurrentPass || !normalizedNew || !rawNewPass) {
+    throw new Error('Todos os campos são obrigatórios: e-mail antigo, senha antiga, novo e-mail e nova senha.');
+  }
+
+  if (rawNewPass.length < 4) {
+    throw new Error('A nova senha deve possuir no mínimo 4 caracteres.');
+  }
+
+  await ensureFirestoreSeeded();
+
+  // Localizar o proprietário no Firestore
+  const snap = await getDocs(collection(db, 'users'));
+  const matchedDoc = snap.docs.find(d => {
+    const u = d.data();
+    return u.role === 'owner' && (u.email || '').trim().toLowerCase() === normalizedCurrent;
+  });
+
+  if (!matchedDoc) {
+    // Também verificar se há na lista semente
+    const seedMatch = (defaultDbData.users as any[])?.find(u => u.role === 'owner' && (u.email || '').trim().toLowerCase() === normalizedCurrent);
+    if (!seedMatch) {
+      throw new Error('E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.');
+    }
+    if ((seedMatch as any).password !== rawCurrentPass) {
+      throw new Error('E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.');
+    }
+  } else {
+    const docData = matchedDoc.data();
+    if (!docData.password || docData.password !== rawCurrentPass) {
+      throw new Error('E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.');
+    }
+  }
+
+  // Verificar colisão de novo e-mail se foi alterado
+  if (normalizedCurrent !== normalizedNew) {
+    const collisionDoc = snap.docs.find(d => {
+      if (matchedDoc && d.id === matchedDoc.id) return false;
+      const u = d.data();
+      return (u.email || '').trim().toLowerCase() === normalizedNew;
+    });
+    if (collisionDoc) {
+      throw new Error('O novo e-mail informado já está em uso por outro usuário.');
+    }
+  }
+
+  const targetDocId = matchedDoc ? matchedDoc.id : `user-owner-${Date.now()}`;
+  const updatedUser = {
+    id: targetDocId,
+    email: normalizedNew,
+    password: rawNewPass,
+    role: 'owner',
+    name: matchedDoc?.data()?.name || 'Proprietário',
+    phone: matchedDoc?.data()?.phone || '61985429584',
+    active: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Atualizar documento no Firestore
+  try {
+    await setDoc(doc(db, 'users', targetDocId), updatedUser, { merge: true });
+  } catch (err) {
+    console.warn('Notice saving updated owner in Firestore:', err);
+  }
+
+  // Atualizar também na configuração geral da barbearia
+  try {
+    await updateDoc(doc(db, 'settings', 'main'), {
+      owner_email: normalizedNew,
+      updated_at: new Date().toISOString(),
+    });
+  } catch {
+    // Caso offline
+  }
+
+  // Chamar sincronização no backend Express para atualizar db.json
+  try {
+    await fetch('/api/owner/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentEmail: normalizedCurrent,
+        currentPassword: rawCurrentPass,
+        newEmail: normalizedNew,
+        newPassword: rawNewPass,
+      }),
+    });
+  } catch {
+    // API backend sincronizada
+  }
+
+  const safeProfile: UserProfile = {
+    id: targetDocId,
+    email: normalizedNew,
+    name: updatedUser.name,
+    role: 'owner',
+    phone: updatedUser.phone,
+    active: true,
+  };
+
+  return {
+    success: true,
+    message: 'E-mail e senha alterados com sucesso! Use as novas credenciais no próximo login.',
+    user: safeProfile,
+  };
 }
 
 export async function loginWithGoogleFS(): Promise<{ user: UserProfile; token: string }> {
@@ -1140,6 +1268,8 @@ export async function getOwnerOverviewFS(): Promise<OwnerOverviewMetrics> {
   const barbers = await getBarbersFS(true);
   const admins = await getOwnerAdminsFS();
   const services = await getServicesFS(true);
+  const owners = await getOwnerAccountsFS();
+  const activeOwners = owners.filter(o => o.active !== false);
 
   const totalGross = appts.reduce((acc, a) => acc + (a.price || 0), 0);
 
@@ -1165,6 +1295,8 @@ export async function getOwnerOverviewFS(): Promise<OwnerOverviewMetrics> {
     totalAdmins: admins.length,
     totalBarbers: barbers.length,
     totalServices: services.length,
+    totalActiveOwners: activeOwners.length,
+    ownerAccounts: activeOwners,
     barberRevenues: barberStats,
   };
 }

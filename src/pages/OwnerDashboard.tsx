@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from '../context/RouterContext';
 import { useAuth } from '../context/AuthContext';
-import { AdminAccount, OwnerOverviewMetrics } from '../types';
+import { AdminAccount, OwnerOverviewMetrics, OwnerAccount } from '../types';
 import { 
   fetchOwnerOverview, 
   fetchOwnerAdmins, 
+  fetchOwnerAccounts,
+  updateOwnerCredentials,
   createAdminAccount, 
   updateAdminAccount, 
   deleteAdminAccount 
@@ -34,7 +36,9 @@ import {
   Share2,
   Smartphone,
   Download,
-  Sparkles
+  Sparkles,
+  KeyRound,
+  Check
 } from 'lucide-react';
 import { RoleAppDownloadCard } from '../components/RoleAppDownloadCard';
 import { DedicatedRolePortalLogin } from '../components/DedicatedRolePortalLogin';
@@ -42,10 +46,11 @@ import { ThemeToggle } from '../components/ThemeToggle';
 
 export const OwnerDashboard: React.FC = () => {
   const { navigate } = useRouter();
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, logout, isLoading: authLoading, updateUser } = useAuth();
 
   const [overview, setOverview] = useState<OwnerOverviewMetrics | null>(null);
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
+  const [ownerAccounts, setOwnerAccounts] = useState<OwnerAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -60,6 +65,19 @@ export const OwnerDashboard: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Owner credentials change state
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [credSubmitting, setCredSubmitting] = useState(false);
+  const [credError, setCredError] = useState<string | null>(null);
+  const [credSuccess, setCredSuccess] = useState<string | null>(null);
+
   // Toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -73,15 +91,24 @@ export const OwnerDashboard: React.FC = () => {
     }
   }, [user, authLoading]);
 
+  useEffect(() => {
+    if (user?.email) {
+      setCurrentEmail(user.email);
+      setNewEmail(user.email);
+    }
+  }, [user]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [ov, adms] = await Promise.all([
+      const [ov, adms, owners] = await Promise.all([
         fetchOwnerOverview(),
         fetchOwnerAdmins(),
+        fetchOwnerAccounts(),
       ]);
       setOverview(ov);
       setAdmins(adms);
+      setOwnerAccounts(owners);
     } catch (err: any) {
       console.error('Error loading owner data:', err);
       showToast('Erro ao carregar dados do proprietário.', 'error');
@@ -191,6 +218,63 @@ export const OwnerDashboard: React.FC = () => {
     }
   };
 
+  const handleUpdateCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCredError(null);
+    setCredSuccess(null);
+
+    if (!currentEmail.trim() || !currentPassword.trim()) {
+      setCredError('Informe o e-mail antigo e a senha antiga cadastrados para autorizar a alteração.');
+      return;
+    }
+
+    if (!newEmail.trim() || !newPassword.trim()) {
+      setCredError('Informe o novo e-mail e a nova senha.');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setCredError('A nova senha e a confirmação de nova senha não coincidem.');
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      setCredError('A nova senha deve possuir no mínimo 4 caracteres.');
+      return;
+    }
+
+    setCredSubmitting(true);
+    try {
+      const res = await updateOwnerCredentials({
+        currentEmail: currentEmail.trim(),
+        currentPassword: currentPassword.trim(),
+        newEmail: newEmail.trim(),
+        newPassword: newPassword.trim(),
+      });
+
+      setCredSuccess('Credenciais atualizadas com sucesso! A partir de agora utilize o novo e-mail e a nova senha.');
+      showToast('E-mail e senha de proprietário atualizados com sucesso!', 'success');
+
+      if (res.user) {
+        updateUser(res.user);
+      }
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setCurrentEmail(newEmail.trim());
+
+      await loadData();
+    } catch (err: any) {
+      console.error('Error updating credentials:', err);
+      const msg = err.message || 'Erro ao atualizar credenciais.';
+      setCredError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setCredSubmitting(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0d0e11] flex items-center justify-center">
@@ -208,14 +292,13 @@ export const OwnerDashboard: React.FC = () => {
     );
   }
 
-  // Ensure owner accounts always have the owner role
-  const isOwnerEmail =
-    user.email?.toLowerCase().trim() === 'allinesoares050@gmail.com' ||
-    user.email?.toLowerCase().trim() === 'rs3043017@gmail.com' ||
-    user.email?.toLowerCase().trim() === 'dono@liderbarbers.com.br';
+  // O único e-mail autorizado com papel de proprietário é rs3043017@gmail.com
+  const isOwnerEmail = user.email?.toLowerCase().trim() === 'rs3043017@gmail.com';
 
   if (isOwnerEmail && user.role !== 'owner') {
     user.role = 'owner';
+  } else if (!isOwnerEmail && user.role === 'owner') {
+    user.role = 'customer';
   }
 
   // If user is logged in as someone else (not owner), guide them
@@ -475,7 +558,7 @@ export const OwnerDashboard: React.FC = () => {
         </div>
 
         {/* Master KPIs Overview - Ultra Compact Mobile Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
           {/* Faturamento Geral */}
           <div className="rounded-2xl border border-[#d4af37]/30 bg-gradient-to-b from-[#1c1d28] to-[#12141c] p-3.5 shadow-lg">
             <span className="text-[11px] font-bold text-[#d4af37] uppercase flex items-center gap-1">
@@ -490,6 +573,23 @@ export const OwnerDashboard: React.FC = () => {
             </div>
             <p className="text-[10px] text-neutral-400 mt-0.5">
               Receita total realizada no app
+            </p>
+          </div>
+
+          {/* Logins de Proprietário Ativos */}
+          <div className="rounded-2xl border border-[#d4af37]/40 bg-gradient-to-b from-[#1f1e28] to-[#12141c] p-3.5 shadow-lg">
+            <span className="text-[11px] font-bold text-[#d4af37] uppercase flex items-center gap-1">
+              <Crown className="w-3.5 h-3.5 text-[#d4af37]" />
+              Logins do Dono
+            </span>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-black text-white font-cinzel">
+                {overview?.totalActiveOwners ?? ownerAccounts.filter(o => o.active !== false).length}
+              </span>
+              <span className="text-xs text-[#f5d77f] font-bold">ativos</span>
+            </div>
+            <p className="text-[10px] text-neutral-400 mt-0.5">
+              Acesso total ao sistema
             </p>
           </div>
 
@@ -542,6 +642,290 @@ export const OwnerDashboard: React.FC = () => {
             <p className="text-[10px] text-neutral-400 mt-0.5">
               Concluídos com sucesso
             </p>
+          </div>
+        </div>
+
+        {/* SECTION: CONTAS DE PROPRIETÁRIO ATIVAS & ALTERAÇÃO DE CREDENCIAIS (E-MAIL E SENHA) */}
+        <div className="rounded-2xl border border-[#d4af37]/40 bg-[#12141c] p-4 sm:p-5 space-y-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1f2331]">
+            <div>
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-[#d4af37]" />
+                <h2 className="text-sm sm:text-base font-bold text-white font-cinzel">
+                  Logins de Proprietário Ativos & Segurança de Credenciais
+                </h2>
+              </div>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Visualize quantos logins de proprietário estão ativos e altere seu e-mail ou senha confirmando as credenciais antigas.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-lg border border-[#d4af37]/40 bg-[#191c28] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#f5d77f]">
+                <Lock className="w-3 h-3 text-[#d4af37]" />
+                Autenticação Estrita
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Coluna 1: Lista e Contagem de Logins Ativos */}
+            <div className="lg:col-span-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#d4af37]" />
+                  Logins de Dono Ativos ({ownerAccounts.filter(o => o.active !== false).length})
+                </span>
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  {ownerAccounts.filter(o => o.active !== false).length} ativo(s)
+                </span>
+              </div>
+
+              <p className="text-[11px] text-neutral-400">
+                Estas são as contas autorizadas com nível Proprietário. Nenhuma senha com variação ("dona", "dono", etc.) é aceita pelo sistema — somente senhas exatas cadastradas.
+              </p>
+
+              <div className="space-y-2">
+                {ownerAccounts.length === 0 ? (
+                  <div className="rounded-xl border border-[#222736] bg-[#161824] p-3 text-center text-xs text-neutral-400">
+                    Carregando contas de proprietário...
+                  </div>
+                ) : (
+                  ownerAccounts.map((owner) => {
+                    const isCurrentSession = user?.email && owner.email.toLowerCase() === user.email.toLowerCase();
+                    return (
+                      <div
+                        key={owner.id}
+                        className={`rounded-xl border p-3 transition ${
+                          isCurrentSession
+                            ? 'border-[#d4af37]/50 bg-gradient-to-r from-[#1b1c27] to-[#161824]'
+                            : 'border-[#232838] bg-[#161824]'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-[#1a1d2c] border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shrink-0">
+                              <Crown className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-xs font-bold text-white truncate">{owner.name}</h4>
+                                {isCurrentSession && (
+                                  <span className="rounded bg-[#d4af37]/20 border border-[#d4af37]/50 px-1.5 py-0.2 text-[9px] font-black text-[#f5d77f]">
+                                    Sua Sessão
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-neutral-400 truncate flex items-center gap-1 mt-0.5">
+                                <Mail className="w-3 h-3 text-[#d4af37]" />
+                                {owner.email}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase shrink-0 ${
+                            owner.active !== false
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                          }`}>
+                            {owner.active !== false ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+
+                        <div className="mt-2.5 pt-2 border-t border-[#1f2331] flex items-center justify-between text-[10px] text-neutral-400">
+                          <span className="flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-neutral-500" />
+                            Senha cadastrada ativa
+                          </span>
+                          <span className="text-neutral-500">
+                            {owner.phone || 'Sem telefone'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-amber-300/90 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Regra de Acesso:</strong> Se tentar logar com qualquer senha que não seja a cadastrada no banco, o acesso será sumariamente rejeitado.
+                </span>
+              </div>
+            </div>
+
+            {/* Coluna 2: Formulário de Troca Segura de Credenciais */}
+            <div className="lg:col-span-7 rounded-xl border border-[#232838] bg-[#161824] p-4 sm:p-5 space-y-4">
+              <div className="border-b border-[#212638] pb-3">
+                <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-[#d4af37]" />
+                  Alterar E-mail e Senha do Dono
+                </h3>
+                <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                  Para alterar suas credenciais, é <strong>obrigatório informar o e-mail antigo e a senha antiga cadastrados</strong>. Nenhuma variação é aceita.
+                </p>
+              </div>
+
+              {credError && (
+                <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <span>{credError}</span>
+                </div>
+              )}
+
+              {credSuccess && (
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-300 flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>{credSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateCredentials} className="space-y-3.5">
+                {/* Passo 1: Credenciais Antigas para Autorização */}
+                <div className="rounded-lg border border-[#2c3245] bg-[#11131b] p-3 space-y-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4af37] flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    1. Confirmação das Credenciais Antigas (Obrigatório)
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                        E-mail Antigo (Atual) *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          required
+                          value={currentEmail}
+                          onChange={(e) => setCurrentEmail(e.target.value)}
+                          placeholder="ex: rodrigomotos79@gmail.com"
+                          className="w-full rounded-lg border border-[#2b3145] bg-[#171a25] px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                        />
+                        <Mail className="w-3.5 h-3.5 text-neutral-500 absolute right-3 top-2.5 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                        Senha Antiga (Atual) *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          required
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Digite sua senha atual exata"
+                          className="w-full rounded-lg border border-[#2b3145] bg-[#171a25] px-3 py-2 pr-9 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-2.5 top-2 text-neutral-400 hover:text-white transition cursor-pointer"
+                        >
+                          {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Passo 2: Novas Credenciais */}
+                <div className="rounded-lg border border-[#2c3245] bg-[#11131b] p-3 space-y-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4af37] flex items-center gap-1">
+                    <KeyRound className="w-3 h-3" />
+                    2. Definir Novo E-mail e Nova Senha
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                        Novo E-mail *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          required
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
+                          placeholder="Novo e-mail de acesso"
+                          className="w-full rounded-lg border border-[#2b3145] bg-[#171a25] px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                        />
+                        <Mail className="w-3.5 h-3.5 text-neutral-500 absolute right-3 top-2.5 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                        Nova Senha * (mín. 4 dígitos)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          required
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Nova senha segura"
+                          className="w-full rounded-lg border border-[#2b3145] bg-[#171a25] px-3 py-2 pr-9 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-2.5 top-2 text-neutral-400 hover:text-white transition cursor-pointer"
+                        >
+                          {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                      Confirmar Nova Senha *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        required
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        placeholder="Repita a nova senha exatamente"
+                        className="w-full rounded-lg border border-[#2b3145] bg-[#171a25] px-3 py-2 pr-9 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-2.5 top-2 text-neutral-400 hover:text-white transition cursor-pointer"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={credSubmitting}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#e5c158] to-[#aa8222] px-5 py-2.5 text-xs font-black uppercase tracking-wider text-[#0d0e11] hover:brightness-110 shadow-lg shadow-[#d4af37]/20 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {credSubmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-[#0d0e11]" />
+                        <span>Validando e Atualizando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 text-[#0d0e11]" />
+                        <span>Confirmar e Salvar Novas Credenciais</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
 

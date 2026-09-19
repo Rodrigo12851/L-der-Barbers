@@ -10,7 +10,8 @@ import {
   AdminAccount,
   BarberAccount,
   BarberRevenueMetrics,
-  OwnerOverviewMetrics
+  OwnerOverviewMetrics,
+  OwnerAccount
 } from '../types';
 import * as FS from './firestoreService';
 
@@ -474,6 +475,41 @@ export async function fetchOwnerOverview(): Promise<OwnerOverviewMetrics> {
     async () => {
       const res = await fetch('/api/owner/overview');
       if (!res.ok) throw new Error('Erro ao carregar visão geral do dono');
+      return res.json();
+    }
+  );
+}
+
+export async function fetchOwnerAccounts(): Promise<OwnerAccount[]> {
+  return tryFirestoreOrApi(
+    () => FS.getOwnerAccountsFS(),
+    async () => {
+      const res = await fetch('/api/owner/accounts');
+      if (!res.ok) throw new Error('Erro ao listar contas de proprietário');
+      const data = await res.json();
+      return data.accounts || [];
+    }
+  );
+}
+
+export async function updateOwnerCredentials(data: {
+  currentEmail: string;
+  currentPassword: string;
+  newEmail: string;
+  newPassword: string;
+}): Promise<{ success: boolean; user: UserProfile; message?: string }> {
+  return tryFirestoreOrApi(
+    () => FS.updateOwnerCredentialsFS(data),
+    async () => {
+      const res = await fetch('/api/owner/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao atualizar credenciais do proprietário');
+      }
       return res.json();
     }
   );

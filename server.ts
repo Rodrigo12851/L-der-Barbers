@@ -167,12 +167,12 @@ const defaultData: DatabaseSchema = {
   appointments: [],
   users: [
     {
-      id: 'user-owner',
-      email: 'dono@liderbarbers.com.br',
-      password: 'dono',
-      name: 'Proprietário Geral',
+      id: 'user-owner-rodrigo',
+      email: 'rs3043017@gmail.com',
+      password: 'rs20061991@',
+      name: 'Rodrigo Dos Santos Souza',
       role: 'owner',
-      phone: '(11) 99999-0000',
+      phone: '61985429584',
       active: true,
       created_at: new Date().toISOString()
     },
@@ -356,6 +356,27 @@ function loadDb() {
       }
       // Ensure db.users array exists
       if (!db.users) db.users = [];
+
+      // Guarantee sole owner is strictly rs3043017@gmail.com with password rs20061991@
+      db.users = db.users.filter(u => u.role !== 'owner' || (u.email || '').toLowerCase().trim() === 'rs3043017@gmail.com');
+      let ownerUser = db.users.find(u => u.role === 'owner' && (u.email || '').toLowerCase().trim() === 'rs3043017@gmail.com');
+      if (!ownerUser) {
+        ownerUser = {
+          id: 'user-owner-rodrigo',
+          email: 'rs3043017@gmail.com',
+          password: 'rs20061991@',
+          name: 'Rodrigo Dos Santos Souza',
+          role: 'owner',
+          phone: '61985429584',
+          active: true,
+          created_at: new Date().toISOString()
+        };
+        db.users.unshift(ownerUser);
+      } else {
+        ownerUser.password = 'rs20061991@';
+        ownerUser.name = 'Rodrigo Dos Santos Souza';
+        ownerUser.active = true;
+      }
 
       // Ensure every Admin user automatically has a Barber profile in db.barbers & schedules
       if (!db.barbers) db.barbers = [];
@@ -1083,22 +1104,20 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
-  const isOwnerEmail =
-    normalizedEmail === 'rs3043017@gmail.com' ||
-    normalizedEmail === 'allinesoares050@gmail.com' ||
-    normalizedEmail === 'dono@liderbarbers.com.br';
+  const isOwnerEmail = normalizedEmail === 'rs3043017@gmail.com';
 
   let user = db.users.find(u => {
     const uEmail = (u.email || '').toLowerCase().trim();
     return uEmail === normalizedEmail;
   });
 
-  // If designated owner account not yet in memory db, add it
+  // If designated owner account not yet in memory db, add it with strict credentials
   if (!user && isOwnerEmail) {
     user = {
-      id: 'user-owner-' + Date.now(),
-      email: normalizedEmail,
-      name: normalizedEmail === 'rs3043017@gmail.com' ? 'Rodrigo Dos Santos Souza' : 'Proprietário Líder Barbers',
+      id: 'user-owner-rodrigo',
+      email: 'rs3043017@gmail.com',
+      password: 'rs20061991@',
+      name: 'Rodrigo Dos Santos Souza',
       role: 'owner',
       phone: '61985429584',
       active: true,
@@ -1120,14 +1139,10 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(403).json({ error: 'Esta conta de acesso foi desativada pela administração.' });
   }
 
-  // If user has a set password, verify it; if owner logging in without plain text password stored, grant owner session
-  if (user.password && user.password !== password) {
-    const rawLower = (password || '').trim().toLowerCase();
-    if (isOwnerEmail && (rawLower === 'dona' || rawLower === 'dono' || rawLower === '123456' || rawLower === 'admin')) {
-      // Permite variações válidas de senha do proprietário
-    } else {
-      return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha.' });
-    }
+  // Strict password validation: NO variations!
+  // Only accept if the user is registered and user.password matches the provided password
+  if (!user.password || user.password !== password) {
+    return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha.' });
   }
 
   // Don't send back password
@@ -1232,6 +1247,8 @@ app.get('/api/owner/overview', (req, res) => {
   const totalAdmins = db.users.filter(u => u.role === 'admin').length;
   const totalBarbers = db.barbers.length;
   const totalServices = db.services.length;
+  const ownerUsers = db.users.filter(u => u.role === 'owner');
+  const activeOwners = ownerUsers.filter(u => u.active !== false).map(({ password: _, ...rest }) => rest);
 
   // Revenue per barber
   const barberRevenues = db.barbers.map(b => {
@@ -1255,7 +1272,65 @@ app.get('/api/owner/overview', (req, res) => {
     totalAdmins,
     totalBarbers,
     totalServices,
+    totalActiveOwners: activeOwners.length,
+    ownerAccounts: activeOwners,
     barberRevenues
+  });
+});
+
+app.get('/api/owner/accounts', (req, res) => {
+  const owners = db.users
+    .filter(u => u.role === 'owner')
+    .map(({ password: _, ...rest }) => rest);
+  res.json({
+    totalActive: owners.filter(o => o.active !== false).length,
+    accounts: owners
+  });
+});
+
+app.post('/api/owner/credentials', (req, res) => {
+  const { currentEmail, currentPassword, newEmail, newPassword } = req.body;
+  if (!currentEmail || !currentPassword || !newEmail || !newPassword) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios (e-mail antigo, senha antiga, novo e-mail e nova senha).' });
+  }
+
+  const normalizedCurrent = currentEmail.toLowerCase().trim();
+  const normalizedNew = newEmail.toLowerCase().trim();
+
+  // Find owner with currentEmail
+  const owner = db.users.find(u => u.role === 'owner' && u.email?.toLowerCase().trim() === normalizedCurrent);
+  if (!owner) {
+    return res.status(401).json({ error: 'E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.' });
+  }
+
+  // Strict check: current password must match registered password
+  if (owner.password !== currentPassword) {
+    return res.status(401).json({ error: 'E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.' });
+  }
+
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'A nova senha deve possuir no mínimo 4 caracteres.' });
+  }
+
+  // Check collision with another user
+  if (normalizedCurrent !== normalizedNew) {
+    const collision = db.users.find(u => u.id !== owner.id && u.email?.toLowerCase().trim() === normalizedNew);
+    if (collision) {
+      return res.status(409).json({ error: 'O novo e-mail já está em uso por outro usuário.' });
+    }
+  }
+
+  owner.email = normalizedNew;
+  owner.password = newPassword;
+  (owner as any).updated_at = new Date().toISOString();
+
+  saveDb();
+
+  const { password: _, ...safeOwner } = owner;
+  res.json({
+    success: true,
+    message: 'Credenciais do proprietário atualizadas com sucesso!',
+    user: safeOwner
   });
 });
 

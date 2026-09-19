@@ -141,12 +141,24 @@ export interface BarberRevenueMetrics {
   completedAppointments: (Appointment & { commission: number })[];
 }
 
+export interface OwnerAccount {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  active: boolean;
+  role: 'owner';
+  created_at?: string;
+}
+
 export interface OwnerOverviewMetrics {
   totalGrossRevenue: number;
   totalCompletedAppointments: number;
   totalAdmins: number;
   totalBarbers: number;
   totalServices: number;
+  totalActiveOwners?: number;
+  ownerAccounts?: OwnerAccount[];
   barberRevenues: {
     barber_id: string;
     name: string;
