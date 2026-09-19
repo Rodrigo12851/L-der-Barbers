@@ -37,7 +37,7 @@ const defaultData: DatabaseSchema = {
     name: 'Líder Barbers',
     tagline: 'Barbearia Clássica & Moderna',
     logo_url: '',
-    hero_image_url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80',
+    hero_image_url: '/cover.svg',
     phone: '(11) 98765-4321',
     address: 'Av. Paulista, 1000 — São Paulo, SP'
   },
@@ -349,7 +349,7 @@ function loadDb() {
           name: 'Líder Barbers',
           tagline: 'Barbearia Clássica & Moderna',
           logo_url: '',
-          hero_image_url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80',
+          hero_image_url: '/cover.svg',
           phone: '(11) 98765-4321',
           address: 'Av. Paulista, 1000 — São Paulo, SP'
         };
@@ -1613,6 +1613,9 @@ app.get('/api/admin/metrics', (req, res) => {
 
 // ---------------- VITE MIDDLEWARE / STATIC ASSETS ----------------
 async function startServer() {
+  // Always serve static assets from public folder
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

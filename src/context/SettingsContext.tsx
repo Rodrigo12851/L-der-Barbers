@@ -6,7 +6,7 @@ const DEFAULT_SETTINGS: ShopSettings = {
   name: 'Líder Barbers',
   tagline: 'Barbearia Clássica & Moderna',
   logo_url: '',
-  hero_image_url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80',
+  hero_image_url: '/cover.svg',
   phone: '(11) 98765-4321',
   address: 'Av. Paulista, 1000 — São Paulo, SP'
 };
@@ -27,7 +27,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (parsed.hero_image_url && parsed.hero_image_url.includes('unsplash.com')) {
+          parsed.hero_image_url = '/cover.svg';
+        }
+        return { ...DEFAULT_SETTINGS, ...parsed };
       }
     } catch (e) {
       console.warn('Error reading settings from localStorage', e);
@@ -40,6 +44,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const data = await fetchShopSettings();
       if (data && data.name) {
+        if (data.hero_image_url && data.hero_image_url.includes('unsplash.com')) {
+          data.hero_image_url = '/cover.svg';
+        }
         const merged = { ...DEFAULT_SETTINGS, ...data };
         setSettings(merged);
         try {

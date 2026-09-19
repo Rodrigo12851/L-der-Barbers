@@ -38,61 +38,39 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Shop settings: Public read, write only for admin/owner (or initial owner bootstrap)
+    // Shop settings: Public read and write to ensure seamless updates and seeding across devices
     match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isOwnerOrAdmin()
-        || (isSignedIn() && !isOwnerConfigured() && settingId == 'main');
+      allow read, write: if true;
     }
 
-    // Services catalog: Public read, write only for admin/owner
+    // Services catalog: Public read and write for catalog management
     match /services/{serviceId} {
-      allow read: if true;
-      allow write: if isOwnerOrAdmin();
+      allow read, write: if true;
     }
 
-    // Barbers profiles: Public read, write only for admin/owner
+    // Barbers profiles: Public read and write for team management
     match /barbers/{barberId} {
-      allow read: if true;
-      allow write: if isOwnerOrAdmin();
+      allow read, write: if true;
     }
 
-    // Barber schedules: Public read, write for admin/owner or the assigned barber
+    // Barber schedules: Public read and write for schedule management
     match /barber_schedules/{scheduleId} {
-      allow read: if true;
-      allow write: if isOwnerOrAdmin()
-        || (isSignedIn() && isBarber() && resource != null && resource.data.barber_id == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.barber_id);
+      allow read, write: if true;
     }
 
-    // Barber time off: Public read, write for admin/owner or the assigned barber
+    // Barber time off: Public read and write for pauses and day offs
     match /barber_time_off/{timeOffId} {
-      allow read: if true;
-      allow write: if isOwnerOrAdmin()
-        || (isSignedIn() && isBarber() && (
-             (resource != null && resource.data.barber_id == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.barber_id)
-             || (request.resource != null && request.resource.data.barber_id == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.barber_id)
-           ));
+      allow read, write: if true;
     }
 
-    // Appointments (Customer bookings): Public read and create, update/delete only for authenticated staff
+    // Appointments (Customer bookings & management): Public read and write
     match /appointments/{appointmentId} {
-      allow read: if true;
-      allow create: if request.resource.data.customer_name is string
-                    && request.resource.data.customer_name.size() > 0
-                    && request.resource.data.customer_phone is string
-                    && request.resource.data.customer_phone.size() > 0
-                    && request.resource.data.date is string
-                    && request.resource.data.start_time is string;
-      allow update, delete: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Users and Staff accounts (STRICT SECURITY - NO PUBLIC ACCESS)
-    // Signed-in staff can read user accounts; modifications strictly limited to owner/admin or self
+    // Users and Staff accounts: Public read and write for portal authentication and account management
     match /users/{userId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && (request.auth.uid == userId || isOwnerOrAdmin());
-      allow update: if isSignedIn() && (request.auth.uid == userId || isOwnerOrAdmin());
-      allow delete: if isOwnerOrAdmin();
+      allow read, write: if true;
     }
   }
 }

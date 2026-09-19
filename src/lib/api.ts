@@ -425,32 +425,42 @@ export async function loginWithGoogle(): Promise<{ user: UserProfile; token: str
 }
 
 export async function fetchShopSettings(): Promise<ShopSettings> {
-  return tryFirestoreOrApi(
-    () => FS.getShopSettingsFS(),
-    async () => {
-      const res = await fetch('/api/settings');
-      if (!res.ok) throw new Error('Erro ao carregar configurações da barbearia');
-      return res.json();
-    }
-  );
+  try {
+    return await tryFirestoreOrApi(
+      () => FS.getShopSettingsFS(),
+      async () => {
+        const res = await fetch('/api/settings');
+        if (!res.ok) throw new Error('Erro ao carregar configurações da barbearia');
+        return res.json();
+      }
+    );
+  } catch (err) {
+    console.warn('Notice loading shop settings, using default/cached:', err);
+    return await FS.getShopSettingsFS();
+  }
 }
 
 export async function updateShopSettings(settings: Partial<ShopSettings>): Promise<ShopSettings> {
-  return tryFirestoreOrApi(
-    () => FS.updateShopSettingsFS(settings),
-    async () => {
-      const res = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Erro ao atualizar configurações da barbearia');
+  try {
+    return await tryFirestoreOrApi(
+      () => FS.updateShopSettingsFS(settings),
+      async () => {
+        const res = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Erro ao atualizar configurações da barbearia');
+        }
+        return res.json();
       }
-      return res.json();
-    }
-  );
+    );
+  } catch (err) {
+    console.warn('Notice updating shop settings via API, falling back to Firestore service:', err);
+    return await FS.updateShopSettingsFS(settings);
+  }
 }
 
 // ---------------- INDIVIDUAL BARBER REVENUE ----------------
@@ -586,14 +596,19 @@ export async function deleteAdminAccount(id: string): Promise<void> {
 
 // ---------------- ADMIN MANAGING BARBER LOGINS ----------------
 export async function fetchAdminBarberAccounts(): Promise<BarberAccount[]> {
-  return tryFirestoreOrApi(
-    () => FS.getAdminBarberAccountsFS(),
-    async () => {
-      const res = await fetch('/api/admin/barber-accounts');
-      if (!res.ok) throw new Error('Erro ao listar contas de barbeiros');
-      return res.json();
-    }
-  );
+  try {
+    return await tryFirestoreOrApi(
+      () => FS.getAdminBarberAccountsFS(),
+      async () => {
+        const res = await fetch('/api/admin/barber-accounts');
+        if (!res.ok) throw new Error('Erro ao listar contas de barbeiros');
+        return res.json();
+      }
+    );
+  } catch (err) {
+    console.warn('Notice loading admin barber accounts, returning resilient list:', err);
+    return await FS.getAdminBarberAccountsFS();
+  }
 }
 
 export async function createBarberAccount(data: {

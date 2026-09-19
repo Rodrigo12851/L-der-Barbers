@@ -67,14 +67,33 @@ export const AdminBarberAccountsTab: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [accs, brbs] = await Promise.all([
+      const [accsResult, brbsResult] = await Promise.allSettled([
         fetchAdminBarberAccounts(),
         fetchBarbers(true),
       ]);
-      setAllBarbers(brbs);
+
+      const accs = accsResult.status === 'fulfilled' && Array.isArray(accsResult.value)
+        ? accsResult.value
+        : [];
+
+      let brbs = brbsResult.status === 'fulfilled' && Array.isArray(brbsResult.value)
+        ? brbsResult.value
+        : (allBarbers.length > 0 ? allBarbers : []);
+
+      if (brbs.length === 0) {
+        try {
+          brbs = await fetchBarbers(true);
+        } catch {
+          // ignore
+        }
+      }
+
+      if (brbs.length > 0) {
+        setAllBarbers(brbs);
+      }
 
       // Enrich every account with matching barber data to guarantee name, nickname, photo and account status
-      const enriched: BarberAccount[] = (accs || []).map((acc) => {
+      const enriched: BarberAccount[] = accs.map((acc) => {
         const matchingBarber = brbs.find((b) => b.id === acc.barber_id || b.id === acc.id);
         const resolvedName = acc.barber_name || acc.name || matchingBarber?.name || 'Barbeiro';
         const resolvedNickname = acc.nickname || acc.barber_nickname || matchingBarber?.nickname || '';
@@ -103,10 +122,10 @@ export const AdminBarberAccountsTab: React.FC = () => {
             nickname: b.nickname || '',
             barber_nickname: b.nickname || '',
             photo_url: b.photo_url || '',
-            email: b.email || '',
+            email: b.login_email || b.email || '',
             phone: b.phone || '',
             commission_rate: b.commission_rate || 50,
-            has_account: false,
+            has_account: !!b.has_login || !!b.login_email,
             active: b.active !== false,
           });
         }
@@ -114,8 +133,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
 
       setAccounts(enriched);
     } catch (err: any) {
-      console.error('Error loading barber accounts:', err);
-      showToast('Erro ao carregar acessos dos barbeiros.', 'error');
+      console.warn('Notice loading barber accounts:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

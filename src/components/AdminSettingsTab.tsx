@@ -99,11 +99,11 @@ export const AdminSettingsTab: React.FC<{ onNotify: (msg: string, type?: 'succes
   };
 
   const handleResetHero = () => {
-    const defaultHero = 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80';
+    const defaultHero = '/cover.svg';
     setHeroImageUrl(defaultHero);
     setHeroPreview(defaultHero);
     if (heroInputRef.current) heroInputRef.current.value = '';
-    onNotify('Foto principal restaurada para a imagem clássica.');
+    onNotify('Foto principal restaurada para a capa oficial Líder Barbers.');
   };
 
   return (
@@ -296,7 +296,7 @@ export const AdminSettingsTab: React.FC<{ onNotify: (msg: string, type?: 'succes
               </label>
               <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden border border-[#2d3244] bg-neutral-900 shadow-lg">
                 <img
-                  src={heroPreview || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80'}
+                  src={heroPreview || '/cover.svg'}
                   alt="Foto de Destaque da Barbearia"
                   className="h-full w-full object-cover brightness-90 contrast-105"
                 />
