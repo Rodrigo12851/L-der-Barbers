@@ -399,40 +399,40 @@ export const BookingFlow: React.FC = () => {
           </h1>
         </div>
 
-        {/* VIP Direct Booking Banner when accessed via exclusive link */}
-        {exclusiveBarber && (
-          <div className="mb-4 rounded-2xl border border-[#d4af37]/40 bg-gradient-to-r from-[#171924] via-[#1d2130] to-[#141620] p-3.5 sm:p-4 shadow-xl flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="relative shrink-0">
-                <img
-                  src={exclusiveBarber.photo_url}
-                  alt={exclusiveBarber.name}
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover border-2 border-[#d4af37] shadow-md"
-                />
-                <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#0d0e11]" />
-              </div>
+        {/* If accessed via exclusive barber link while choosing service */}
+        {exclusiveBarber && step === 'service' && (
+          <div className="mb-3 rounded-xl border border-[#d4af37]/50 bg-gradient-to-r from-[#171923] to-[#12141c] p-2.5 shadow-md flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <img
+                src={exclusiveBarber.photo_url}
+                alt={exclusiveBarber.name}
+                className="w-10 h-10 rounded-xl object-cover border-2 border-[#d4af37] shrink-0"
+              />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="rounded bg-[#d4af37]/20 border border-[#d4af37]/50 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-[#f5d77f]">
-                    Link Exclusivo
+                  <h4 className="text-xs font-black text-white">
+                    {exclusiveBarber.nickname || exclusiveBarber.name}
+                  </h4>
+                  <span className="rounded bg-[#d4af37]/20 border border-[#d4af37]/40 px-1.5 py-0.2 text-[9px] font-black uppercase text-[#f5d77f]">
+                    Exclusivo
                   </span>
-                  <span className="text-[10px] text-neutral-400">Atendimento Direto</span>
                 </div>
-                <h2 className="text-sm sm:text-base font-black text-white font-cinzel leading-tight mt-0.5">
-                  {exclusiveBarber.nickname || exclusiveBarber.name}
-                </h2>
-                <p className="text-[11px] text-neutral-300">
-                  {exclusiveBarber.bio || 'Profissional especialista pronto para seu atendimento.'}
+                <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                  <Check className="w-3 h-3" /> Barbeiro definido pelo link de agendamento
                 </p>
               </div>
             </div>
-
-            <div className="hidden sm:flex flex-col items-end text-right shrink-0">
-              <span className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">
-                <Check className="w-3 h-3" /> Pré-selecionado
-              </span>
-              <span className="text-[10px] text-neutral-400">Etapa de barbeiro pulada</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setExclusiveBarber(null);
+                setSelectedBarberId('any');
+              }}
+              className="rounded-lg border border-[#2d3244] bg-[#10121a] px-2.5 py-1 text-[11px] font-semibold text-neutral-400 hover:text-white hover:border-[#d4af37] transition cursor-pointer shrink-0"
+              title="Trocar para outro barbeiro"
+            >
+              Trocar
+            </button>
           </div>
         )}
 
@@ -488,84 +488,8 @@ export const BookingFlow: React.FC = () => {
         {step === 'schedule' && selectedService && (
           <div className="space-y-4 animate-in fade-in duration-200">
             
-            {/* Top Bar: Selected Service Summary with Change Button */}
-            <div className="rounded-xl border border-[#d4af37]/40 bg-[#171923] p-3 flex items-center justify-between gap-3 shadow-md">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#d4af37]/20 border border-[#d4af37]/50 flex items-center justify-center text-[#d4af37] shrink-0">
-                  <Scissors className="w-4 h-4 -rotate-45" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#d4af37]">Serviço Selecionado</span>
-                    <span className="text-neutral-500">•</span>
-                    <span className="text-[11px] text-neutral-400">{selectedService.duration_minutes} min</span>
-                  </div>
-                  <h3 className="text-xs sm:text-sm font-bold text-white leading-tight">
-                    {selectedService.name}
-                  </h3>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-black text-[#f5d77f]">
-                  R$ {Number(selectedService?.price || 0).toFixed(2).replace('.', ',')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStep('service')}
-                  className="rounded-lg border border-[#31374a] bg-[#12141c] px-2.5 py-1 text-[11px] font-semibold text-neutral-300 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
-                >
-                  Trocar
-                </button>
-              </div>
-            </div>
-
-            {/* Sub-Card 1: Choose Date (Horizontal 1-tap scroll) */}
-            <div className="rounded-xl border border-[#232733] bg-[#12141c] p-3.5 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
-                  <CalendarIcon className="w-3.5 h-3.5 text-[#d4af37]" />
-                  <span>Escolha o Dia:</span>
-                </span>
-                <span className="text-[11px] text-neutral-400">
-                  {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' }) : ''}
-                </span>
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
-                {nextDays.map((d) => {
-                  const isSelected = selectedDate === d.dateStr;
-                  return (
-                    <button
-                      key={d.dateStr}
-                      type="button"
-                      disabled={d.isSunday}
-                      onClick={() => setSelectedDate(d.dateStr)}
-                      className={`flex flex-col items-center justify-center rounded-xl p-2 min-w-[62px] shrink-0 border transition cursor-pointer ${
-                        isSelected
-                          ? 'border-[#d4af37] bg-[#d4af37] text-[#0d0e11] font-black shadow-md'
-                          : d.isSunday
-                          ? 'border-[#1e222e] bg-[#0f1015] text-neutral-600 opacity-40 cursor-not-allowed'
-                          : 'border-[#232733] bg-[#171923] text-neutral-300 hover:border-[#d4af37]/60 hover:text-white'
-                      }`}
-                    >
-                      <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-[#0d0e11]' : 'text-neutral-400'}`}>
-                        {d.isToday ? 'Hoje' : d.isTomorrow ? 'Amanhã' : d.dayOfWeek}
-                      </span>
-                      <span className="text-base font-black leading-tight">
-                        {d.dayOfMonth}
-                      </span>
-                      <span className={`text-[9px] uppercase ${isSelected ? 'text-[#0d0e11]' : 'text-neutral-500'}`}>
-                        {d.month}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Sub-Card 2: Profissional (Pré-selecionado pelo link exclusivo ou escolha manual) */}
-            <div className="rounded-xl border border-[#232733] bg-[#12141c] p-3 space-y-2">
+            {/* Profissional (Pré-selecionado pelo link exclusivo ou escolha manual) - Topo */}
+            <div className="rounded-xl border border-[#232733] bg-[#12141c] p-3 space-y-2 shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-[#d4af37]" />
@@ -652,6 +576,82 @@ export const BookingFlow: React.FC = () => {
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Top Bar: Selected Service Summary with Change Button */}
+            <div className="rounded-xl border border-[#d4af37]/40 bg-[#171923] p-3 flex items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#d4af37]/20 border border-[#d4af37]/50 flex items-center justify-center text-[#d4af37] shrink-0">
+                  <Scissors className="w-4 h-4 -rotate-45" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#d4af37]">Serviço Selecionado</span>
+                    <span className="text-neutral-500">•</span>
+                    <span className="text-[11px] text-neutral-400">{selectedService.duration_minutes} min</span>
+                  </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-white leading-tight">
+                    {selectedService.name}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-black text-[#f5d77f]">
+                  R$ {Number(selectedService?.price || 0).toFixed(2).replace('.', ',')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setStep('service')}
+                  className="rounded-lg border border-[#31374a] bg-[#12141c] px-2.5 py-1 text-[11px] font-semibold text-neutral-300 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
+                >
+                  Trocar
+                </button>
+              </div>
+            </div>
+
+            {/* Sub-Card 1: Choose Date (Horizontal 1-tap scroll) */}
+            <div className="rounded-xl border border-[#232733] bg-[#12141c] p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#d4af37]" />
+                  <span>Escolha o Dia:</span>
+                </span>
+                <span className="text-[11px] text-neutral-400">
+                  {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' }) : ''}
+                </span>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+                {nextDays.map((d) => {
+                  const isSelected = selectedDate === d.dateStr;
+                  return (
+                    <button
+                      key={d.dateStr}
+                      type="button"
+                      disabled={d.isSunday}
+                      onClick={() => setSelectedDate(d.dateStr)}
+                      className={`flex flex-col items-center justify-center rounded-xl p-2 min-w-[62px] shrink-0 border transition cursor-pointer ${
+                        isSelected
+                          ? 'border-[#d4af37] bg-[#d4af37] text-[#0d0e11] font-black shadow-md'
+                          : d.isSunday
+                          ? 'border-[#1e222e] bg-[#0f1015] text-neutral-600 opacity-40 cursor-not-allowed'
+                          : 'border-[#232733] bg-[#171923] text-neutral-300 hover:border-[#d4af37]/60 hover:text-white'
+                      }`}
+                    >
+                      <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-[#0d0e11]' : 'text-neutral-400'}`}>
+                        {d.isToday ? 'Hoje' : d.isTomorrow ? 'Amanhã' : d.dayOfWeek}
+                      </span>
+                      <span className="text-base font-black leading-tight">
+                        {d.dayOfMonth}
+                      </span>
+                      <span className={`text-[9px] uppercase ${isSelected ? 'text-[#0d0e11]' : 'text-neutral-500'}`}>
+                        {d.month}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Sub-Card 3: Available Time Slots */}
@@ -755,12 +755,6 @@ export const BookingFlow: React.FC = () => {
                   </span>
                 )}
               </div>
-
-              {hasAutoFilled && customerName && customerPhone && (
-                <div className="rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/25 px-2.5 py-1.5 flex items-center justify-between text-[11px] text-[#f5d77f]">
-                  <span>Seus dados foram preenchidos automaticamente para agilizar seu agendamento.</span>
-                </div>
-              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>

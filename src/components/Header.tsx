@@ -3,6 +3,7 @@ import { useRouter } from '../context/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { PWAInstallButton } from './PWAInstallButton';
+import { ThemeToggle } from './ThemeToggle';
 import { 
   Scissors, 
   Menu, 
@@ -142,6 +143,9 @@ export const Header: React.FC = () => {
               </button>
             )}
 
+            {/* Theme Toggle (Modo Claro / Modo Escuro) */}
+            <ThemeToggle variant="icon" />
+
             {/* 
               BOTÃO DO MENU DE 3 TRAÇOS:
               Fica dentro do cabeçalho, acompanhando a rolagem normalmente.
@@ -259,6 +263,14 @@ export const Header: React.FC = () => {
                 </button>
               );
             })}
+          </div>
+
+          {/* THEME SELECTION: MODO CLARO OU ESCURO */}
+          <div className="pt-3 border-t border-[#232733] space-y-2">
+            <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+              Modo de Exibição
+            </span>
+            <ThemeToggle variant="segmented" />
           </div>
 
           {/* ACCESS SECTION: ONLY VISIBLE IF A STAFF USER IS ALREADY LOGGED IN */}

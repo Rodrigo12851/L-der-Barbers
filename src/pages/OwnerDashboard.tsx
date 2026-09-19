@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { RoleAppDownloadCard } from '../components/RoleAppDownloadCard';
 import { DedicatedRolePortalLogin } from '../components/DedicatedRolePortalLogin';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export const OwnerDashboard: React.FC = () => {
   const { navigate } = useRouter();
@@ -297,6 +298,8 @@ export const OwnerDashboard: React.FC = () => {
               <RefreshCw className={`w-3.5 h-3.5 text-[#d4af37] ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Atualizar</span>
             </button>
+
+            <ThemeToggle variant="icon" className="!h-8 !w-8 sm:!h-9 sm:!w-9 rounded-xl" />
 
             <button
               onClick={logout}

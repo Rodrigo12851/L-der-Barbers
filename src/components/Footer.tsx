@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRouter } from '../context/RouterContext';
 import { useSettings } from '../context/SettingsContext';
+import { ThemeToggle } from './ThemeToggle';
 import { Scissors, MapPin, Phone, Clock, Instagram, ShieldCheck } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -131,6 +132,10 @@ export const Footer: React.FC = () => {
 
         <div className="pt-6 border-t border-[#181a24] flex flex-col sm:flex-row items-center justify-between text-[11px] text-neutral-500 gap-3">
           <p>© {new Date().getFullYear()} {settings.name || 'Líder Barbers'}. Todos os direitos reservados.</p>
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline">Tema:</span>
+            <ThemeToggle variant="segmented" className="text-[11px]" />
+          </div>
           <p className="flex items-center gap-2">
             <span>Desenvolvido com padrão clássico & moderno PWA</span>
           </p>

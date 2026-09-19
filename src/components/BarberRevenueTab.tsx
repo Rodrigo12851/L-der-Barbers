@@ -97,15 +97,12 @@ export const BarberRevenueTab: React.FC<BarberRevenueTabProps> = ({ barberId, ba
         <>
           {/* Main KPI Stats - High Density for Mobile */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {/* Net Commission - Barber's Take-Home */}
+            {/* Net Earnings - Barber's Take-Home */}
             <div className="col-span-2 sm:col-span-1 rounded-2xl border border-[#d4af37]/40 bg-gradient-to-b from-[#1c1d28] to-[#13151f] p-3.5 relative overflow-hidden shadow-lg shadow-[#d4af37]/5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#d4af37] flex items-center gap-1">
                   <Wallet className="w-3.5 h-3.5" />
-                  Sua Comissão (Líquido)
-                </span>
-                <span className="rounded-md bg-[#d4af37]/15 px-1.5 py-0.5 text-[10px] font-extrabold text-[#f5d77f]">
-                  {metrics?.commission_rate || 50}%
+                  Seu Faturamento (Líquido)
                 </span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1">
@@ -115,7 +112,7 @@ export const BarberRevenueTab: React.FC<BarberRevenueTabProps> = ({ barberId, ba
                 </span>
               </div>
               <p className="text-[10px] text-neutral-400 mt-1">
-                Valor líquido referente à sua porcentagem
+                Valor líquido apurado dos atendimentos
               </p>
             </div>
 

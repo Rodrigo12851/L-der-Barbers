@@ -42,6 +42,7 @@ import {
 import { BarberRevenueTab } from '../components/BarberRevenueTab';
 import { RoleAppDownloadCard } from '../components/RoleAppDownloadCard';
 import { DedicatedRolePortalLogin } from '../components/DedicatedRolePortalLogin';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export const BarberDashboard: React.FC = () => {
   const { navigate } = useRouter();
@@ -452,6 +453,8 @@ export const BarberDashboard: React.FC = () => {
               <RefreshCw className={`w-3.5 h-3.5 text-[#d4af37] ${loading ? 'animate-spin' : ''}`} />
               <span>Atualizar</span>
             </button>
+
+            <ThemeToggle variant="icon" className="!h-8 !w-8 sm:!h-9 sm:!w-9 rounded-xl" />
 
             <button
               onClick={logout}

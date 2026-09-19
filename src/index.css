@@ -5,6 +5,7 @@
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: #0d0e11;
     color: #f3f4f6;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
 
@@ -19,7 +20,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #12141a;
+  background: #12141c;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -29,4 +30,281 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #d4af37;
+}
+
+/* ========================================================
+   LIGHT THEME ARCHITECTURE (MODO CLARO)
+   Mantém a elegância e sofisticação da Líder Barbers,
+   com superfícies claras, alto contraste e detalhes dourados.
+   ======================================================== */
+
+html.light,
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Scrollbar do Modo Claro */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #d4af37;
+}
+
+/* 1. Telas principais e fundos gerais */
+html.light .bg-\[\#0d0e11\],
+html.light .bg-\[\#0d0e14\],
+html.light .bg-\[\#0d0e15\],
+html.light .bg-\[\#090a0d\],
+html.light .bg-\[\#0a0b0e\],
+html.light .bg-\[\#0b0c10\],
+html.light .bg-\[\#0c0d11\],
+html.light .bg-\[\#0c0d12\],
+html.light .bg-\[\#0c0d14\],
+html.light .bg-\[\#0e1015\],
+html.light .bg-\[\#0e1017\],
+html.light .bg-\[\#0f1015\],
+html.light .bg-\[\#101118\],
+html.light .bg-\[\#101217\],
+html.light .bg-\[\#10121a\],
+html.light .bg-\[\#111218\] {
+  background-color: #f8fafc !important;
+}
+
+/* 2. Cabeçalho, Menu Lateral e Rodapé no Modo Claro */
+html.light header {
+  background-color: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.05) !important;
+}
+html.light aside[aria-label="Menu lateral"] {
+  background-color: #ffffff !important;
+  border-left-color: #e2e8f0 !important;
+  box-shadow: -4px 0 25px 0 rgba(0, 0, 0, 0.1) !important;
+}
+html.light footer {
+  background-color: #f1f5f9 !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+/* 3. Cards, Painéis, Modais e Recipientes Elevados */
+html.light .bg-\[\#12141c\],
+html.light .bg-\[\#12141b\],
+html.light .bg-\[\#13151c\],
+html.light .bg-\[\#13151d\],
+html.light .bg-\[\#13151e\],
+html.light .bg-\[\#13151f\],
+html.light .bg-\[\#131520\],
+html.light .bg-\[\#14161c\],
+html.light .bg-\[\#14161f\],
+html.light .bg-\[\#141620\],
+html.light .bg-\[\#141722\],
+html.light .bg-\[\#141724\],
+html.light .bg-\[\#151720\],
+html.light .bg-\[\#151722\],
+html.light .bg-\[\#151822\],
+html.light .bg-\[\#16181f\],
+html.light .bg-\[\#161820\],
+html.light .bg-\[\#161822\],
+html.light .bg-\[\#161824\],
+html.light .bg-\[\#161924\],
+html.light .bg-\[\#171922\],
+html.light .bg-\[\#171923\],
+html.light .bg-\[\#171924\],
+html.light .bg-\[\#171a25\],
+html.light .bg-\[\#171a26\],
+html.light .bg-\[\#171a29\],
+html.light .bg-\[\#171d29\],
+html.light .bg-\[\#181a24\],
+html.light .bg-\[\#181a25\],
+html.light .bg-\[\#181a26\],
+html.light .bg-\[\#181b26\],
+html.light .bg-\[\#191c28\],
+html.light .bg-\[\#191d29\],
+html.light .bg-\[\#1a1c27\],
+html.light .bg-\[\#1a1d26\],
+html.light .bg-\[\#1a1d27\],
+html.light .bg-\[\#1a1d28\],
+html.light .bg-\[\#1a1d29\],
+html.light .bg-\[\#1a1d2a\],
+html.light .bg-\[\#1a1d2c\],
+html.light .bg-\[\#1a1e2c\],
+html.light .bg-\[\#1b1e2a\],
+html.light .bg-\[\#1c1f2c\],
+html.light .bg-\[\#1c1f2e\],
+html.light .bg-\[\#1c202d\],
+html.light .bg-\[\#1c2032\],
+html.light .bg-\[\#1d2130\],
+html.light .bg-\[\#1e2232\],
+html.light .bg-\[\#1e2333\],
+html.light .bg-\[\#1f2230\],
+html.light .bg-\[\#202433\],
+html.light .bg-\[\#202434\],
+html.light .bg-\[\#202534\],
+html.light .bg-\[\#202538\] {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 4. Gradientes escuros adaptados para claro */
+html.light .from-\[\#161824\] { --tw-gradient-from: #ffffff !important; }
+html.light .via-\[\#13151f\] { --tw-gradient-via: #f8fafc !important; }
+html.light .to-\[\#101118\] { --tw-gradient-to: #f1f5f9 !important; }
+html.light .from-\[\#141722\] { --tw-gradient-from: #ffffff !important; }
+html.light .via-\[\#1a1e2d\] { --tw-gradient-via: #f8fafc !important; }
+html.light .to-\[\#141722\] { --tw-gradient-to: #ffffff !important; }
+html.light .from-\[\#1a1d29\] { --tw-gradient-from: #ffffff !important; }
+html.light .to-\[\#12141c\] { --tw-gradient-to: #f8fafc !important; }
+
+/* 5. Bordas escuras adaptadas para linhas suaves (#e2e8f0) */
+html.light .border-\[\#232733\],
+html.light .border-\[\#2b3040\],
+html.light .border-\[\#232838\],
+html.light .border-\[\#2b3145\],
+html.light .border-\[\#2e3344\],
+html.light .border-\[\#272c3d\],
+html.light .border-\[\#242838\],
+html.light .border-\[\#2c3243\],
+html.light .border-\[\#292e3e\],
+html.light .border-\[\#222634\],
+html.light .border-\[\#2d3345\],
+html.light .border-\[\#2d3243\],
+html.light .border-\[\#272c3c\],
+html.light .border-\[\#262b3a\],
+html.light .border-\[\#24293a\],
+html.light .border-\[\#2d3244\],
+html.light .border-\[\#282d3d\],
+html.light .border-\[\#252a3a\],
+html.light .border-\[\#252938\],
+html.light .border-\[\#212636\],
+html.light .border-\[\#212534\],
+html.light .border-\[\#212431\],
+html.light .border-\[\#1f2331\],
+html.light .border-\[\#1f2332\],
+html.light .border-\[\#1e222f\],
+html.light .border-\[\#1d212f\],
+html.light .border-\[\#1c202d\],
+html.light .border-\[\#1b1e2a\],
+html.light .border-\[\#181a24\],
+html.light .border-\[\#2f3547\],
+html.light .border-\[\#2c334d\],
+html.light .border-\[\#2c3246\],
+html.light .border-\[\#2a2f3f\],
+html.light .border-\[\#282e40\] {
+  border-color: #e2e8f0 !important;
+}
+
+/* 6. Formulários, Inputs, Selects e Textareas */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* 7. Tipografia de Alto Contraste */
+html.light .text-white,
+html.light h1.text-white,
+html.light h2.text-white,
+html.light h3.text-white,
+html.light h4.text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-neutral-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-neutral-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-neutral-300 {
+  color: #334155 !important;
+}
+
+html.light .text-neutral-400 {
+  color: #64748b !important;
+}
+
+html.light .text-neutral-500 {
+  color: #64748b !important;
+}
+
+html.light .text-gray-300 {
+  color: #334155 !important;
+}
+
+html.light .text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Ouro refinado no Modo Claro (alto contraste e nitidez) */
+html.light .text-\[\#f5d77f\] {
+  color: #a16207 !important;
+}
+
+html.light .text-\[\#d4af37\] {
+  color: #a16207 !important;
+}
+
+html.light .text-amber-400 {
+  color: #b45309 !important;
+}
+
+/* Cores de status no modo claro */
+html.light .text-emerald-400 {
+  color: #047857 !important;
+}
+html.light .text-rose-400 {
+  color: #be123c !important;
+}
+html.light .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+/* Proteção de botões com gradiente dourado (preservam texto escuro característico) */
+html.light [class*="bg-gradient-to-r"][class*="from-[#d4af37]"],
+html.light [class*="bg-gradient-to-r"][class*="from-[#d4af37]"] * {
+  color: #0d0e11 !important;
+}
+
+html.light .bg-emerald-500.text-black,
+html.light .bg-emerald-500.text-black * {
+  color: #000000 !important;
+}
+
+html.light .bg-rose-500,
+html.light .bg-rose-600 {
+  color: #ffffff !important;
+}
+
+/* 8. Tabelas e Cabeçalhos de Dados */
+html.light thead {
+  background-color: #f1f5f9 !important;
+}
+html.light thead th {
+  color: #475569 !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+html.light tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+html.light tbody td {
+  border-bottom-color: #f1f5f9 !important;
 }

@@ -43,11 +43,14 @@ import {
   Crown,
   Copy,
   ExternalLink,
-  Share2
+  Share2,
+  Phone,
+  MessageCircle
 } from 'lucide-react';
 import { AdminBarberAccountsTab } from '../components/AdminBarberAccountsTab';
 import { RoleAppDownloadCard } from '../components/RoleAppDownloadCard';
 import { DedicatedRolePortalLogin } from '../components/DedicatedRolePortalLogin';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export const AdminDashboard: React.FC = () => {
   const { navigate } = useRouter();
@@ -56,6 +59,27 @@ export const AdminDashboard: React.FC = () => {
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'metricas' | 'agendamentos' | 'servicos' | 'barbeiros' | 'acessos' | 'identidade'>('metricas');
+
+  // Copy code feedback
+  const [copiedAptCode, setCopiedAptCode] = useState<string | null>(null);
+  const handleCopyAptCode = (code: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedAptCode(code);
+      setTimeout(() => setCopiedAptCode(null), 2500);
+    } catch {
+      // ignore
+    }
+  };
 
   // Data
   const [metrics, setMetrics] = useState<any>(null);
@@ -455,6 +479,7 @@ export const AdminDashboard: React.FC = () => {
             >
               <span>Ver Como Barbeiro</span>
             </button>
+            <ThemeToggle variant="icon" className="!h-8 !w-8 sm:!h-9 sm:!w-9 rounded-xl" />
             <button
               onClick={logout}
               className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 cursor-pointer"
@@ -607,7 +632,7 @@ export const AdminDashboard: React.FC = () => {
             <Key className="w-3.5 h-3.5 text-[#d4af37]" />
             <span>Cadastrar Barbeiros</span>
             <span className="rounded-full bg-[#d4af37]/20 border border-[#d4af37]/40 px-1.5 py-0.2 text-[9px] font-extrabold text-[#f5d77f]">
-              LOGINS & COMISSÕES
+              ACESSOS
             </span>
           </button>
 
@@ -781,8 +806,157 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="rounded-2xl border border-[#232733] bg-[#12141c] overflow-hidden shadow-xl">
+            {/* Mobile View: Cards Personalizados para Modo Celular */}
+            <div className="block md:hidden space-y-3">
+              {filteredAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-[#232733] bg-[#12141c] p-6 text-center text-neutral-400 text-xs">
+                  Nenhum agendamento encontrado com os filtros selecionados.
+                </div>
+              ) : (
+                filteredAppointments.map((apt) => {
+                  const statusColors: Record<string, string> = {
+                    confirmed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+                    completed: 'bg-blue-500/15 text-blue-400 border-blue-500/40',
+                    no_show: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
+                    cancelled: 'bg-rose-500/15 text-rose-400 border-rose-500/40',
+                  };
+                  const statusLabels: Record<string, string> = {
+                    confirmed: 'Confirmado',
+                    completed: 'Concluído',
+                    no_show: 'Ausente',
+                    cancelled: 'Cancelado',
+                  };
+                  const cleanPhone = (apt.customer_phone || '').replace(/\D/g, '');
+                  const dateParts = (apt.date || '').split('-');
+                  const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : apt.date;
+                  const isCopied = copiedAptCode === apt.code;
+
+                  return (
+                    <div
+                      key={apt.id}
+                      className="rounded-2xl border border-[#252938] bg-gradient-to-b from-[#161824] via-[#13151f] to-[#101118] p-4 shadow-lg space-y-3 relative overflow-hidden"
+                    >
+                      {/* Top Bar: Code & Status */}
+                      <div className="flex items-center justify-between gap-2 border-b border-[#1f2332] pb-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAptCode(apt.code)}
+                            className="flex items-center gap-1 font-mono text-xs font-black text-[#f5d77f] bg-[#d4af37]/15 border border-[#d4af37]/35 px-2 py-0.5 rounded-md hover:bg-[#d4af37]/25 transition cursor-pointer"
+                            title="Copiar código do agendamento"
+                          >
+                            <span>{apt.code}</span>
+                            {isCopied ? (
+                              <Check className="w-3 h-3 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-[#d4af37]" />
+                            )}
+                          </button>
+                          <span className="text-[11px] text-neutral-400 font-medium">
+                            {formattedDate}
+                          </span>
+                        </div>
+
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${statusColors[apt.status] || statusColors.confirmed}`}>
+                          {statusLabels[apt.status] || apt.status}
+                        </span>
+                      </div>
+
+                      {/* Main Client Info */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">
+                            Cliente
+                          </span>
+                          <h4 className="text-base font-black text-white capitalize leading-tight mt-0.5">
+                            {apt.customer_name}
+                          </h4>
+                          <span className="text-xs text-neutral-300 font-mono mt-0.5 block">
+                            {apt.customer_phone}
+                          </span>
+                        </div>
+
+                        {/* Quick Contact Buttons */}
+                        {cleanPhone && (
+                          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                            <a
+                              href={`https://api.whatsapp.com/send?phone=55${cleanPhone}&text=${encodeURIComponent(`Olá ${apt.customer_name}, tudo bem? Sou da Líder Barbers confirmando seu agendamento (${apt.code}) para ${formattedDate} às ${apt.start_time} com o barbeiro ${apt.barber?.nickname || 'da nossa equipe'}.`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 px-2.5 py-1.5 text-xs font-bold hover:bg-emerald-500/25 active:scale-95 transition"
+                              title="Chamar no WhatsApp"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-[11px]">WhatsApp</span>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Service, Time & Barber Pill Grid */}
+                      <div className="grid grid-cols-2 gap-2 bg-[#0d0e15] p-3 rounded-xl border border-[#1d212f] text-xs">
+                        <div>
+                          <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                            Serviço & Preço
+                          </span>
+                          <span className="font-bold text-white block truncate mt-0.5">
+                            {apt.service?.name || 'Serviço'}
+                          </span>
+                          <span className="text-[#f5d77f] font-black text-xs">
+                            R$ {Number(apt?.price || 0).toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                            Horário & Profissional
+                          </span>
+                          <span className="font-bold text-white block mt-0.5 font-mono">
+                            {apt.start_time} - {apt.end_time}
+                          </span>
+                          <span className="text-[#d4af37] font-semibold text-xs truncate block">
+                            💈 {apt.barber?.nickname || apt.barber?.name || 'Barbeiro'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status Selector & Quick Action */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#1f2332]">
+                        <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                          Alterar Situação:
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {apt.status === 'confirmed' && (
+                            <button
+                              type="button"
+                              onClick={() => handleAptStatusChange(apt.id, 'completed')}
+                              className="rounded-xl bg-blue-500/15 border border-blue-500/40 text-blue-300 px-2.5 py-1 text-xs font-bold hover:bg-blue-500/25 transition cursor-pointer"
+                            >
+                              ✓ Concluir
+                            </button>
+                          )}
+                          <select
+                            value={apt.status}
+                            onChange={(e) => handleAptStatusChange(apt.id, e.target.value)}
+                            className="rounded-xl border border-[#2d3345] bg-[#171a26] px-2.5 py-1.5 text-xs font-bold text-white focus:border-[#d4af37] focus:outline-none"
+                          >
+                            <option value="confirmed">Confirmado</option>
+                            <option value="completed">Concluído</option>
+                            <option value="no_show">Ausente</option>
+                            <option value="cancelled">Cancelado</option>
+                          </select>
+                        </div>
+                      </div>
+
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop View: Full Data Table */}
+            <div className="hidden md:block rounded-2xl border border-[#232733] bg-[#12141c] overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-neutral-300">
                   <thead className="bg-[#171924] text-[11px] font-bold uppercase tracking-wider text-neutral-400 border-b border-[#232733]">
@@ -1041,7 +1215,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* TAB: ACESSO DOS BARBEIROS (LOGINS & COMISSÕES) */}
+        {/* TAB: ACESSO DOS BARBEIROS (LOGINS) */}
         {activeTab === 'acessos' && (
           <AdminBarberAccountsTab />
         )}

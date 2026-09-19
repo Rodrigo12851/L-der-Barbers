@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Smartphone, 
   Download, 
@@ -10,7 +10,8 @@ import {
   Shield, 
   Scissors,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { InstallAppModal } from './InstallAppModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
@@ -32,7 +33,49 @@ export const RoleAppDownloadCard: React.FC<RoleAppDownloadCardProps> = ({
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { isInstallable, install } = usePWAInstall();
+  const { isInstallable, isInstalled, install } = usePWAInstall();
+  
+  // Check localStorage if user already dismissed or installed the app
+  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(`hide_pwa_card_${role}`) === 'true';
+  });
+
+  // Direct standalone mode detection (running as installed PWA on Android/iOS)
+  const [isStandaloneMode, setIsStandaloneMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const media = window.matchMedia('(display-mode: standalone)');
+      const checkMode = () => {
+        setIsStandaloneMode(
+          media.matches ||
+          (window.navigator as unknown as { standalone?: boolean }).standalone === true
+        );
+      };
+      media.addEventListener?.('change', checkMode);
+      return () => media.removeEventListener?.('change', checkMode);
+    }
+  }, []);
+
+  // When installed on device, do NOT show the download card!
+  if (isStandaloneMode || isInstalled || isDismissed) {
+    return null;
+  }
+
+  const handleDismiss = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`hide_pwa_card_${role}`, 'true');
+    }
+    setIsDismissed(true);
+  };
 
   const path = customPath || (role === 'owner' ? '/proprietario' : role === 'admin' ? '/admin' : '/barbeiro');
   const roleUrl = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
@@ -45,8 +88,8 @@ export const RoleAppDownloadCard: React.FC<RoleAppDownloadCardProps> = ({
 
   const defaultSubtitles = {
     owner: 'Acesse e gerencie seus administradores, faturamento e barbearias direto do app no seu celular.',
-    admin: 'Acesse o painel completo: cadastre barbeiros, comissões, serviços e gerencie agendamentos no seu celular.',
-    barber: 'Sua agenda em tempo real, novos agendamentos e extrato de comissões direto na tela do seu celular.'
+    admin: 'Acesse o painel completo: cadastre barbeiros, serviços e gerencie agendamentos no seu celular.',
+    barber: 'Sua agenda em tempo real, novos agendamentos e faturamento direto na tela do seu celular.'
   };
 
   const cardTitle = title || defaultTitles[role];
@@ -80,7 +123,10 @@ export const RoleAppDownloadCard: React.FC<RoleAppDownloadCardProps> = ({
 
   const handleInstallClick = async () => {
     if (isInstallable) {
-      await install();
+      const outcome = await install();
+      if (outcome) {
+        handleDismiss();
+      }
     } else {
       setModalOpen(true);
     }
@@ -90,7 +136,18 @@ export const RoleAppDownloadCard: React.FC<RoleAppDownloadCardProps> = ({
     <>
       <div className={`rounded-2xl border border-[#d4af37]/35 bg-gradient-to-r from-[#141722] via-[#1a1e2d] to-[#141722] p-4 sm:p-5 shadow-xl relative overflow-hidden ${className}`}>
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Dismiss Button */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[11px] text-neutral-400 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition cursor-pointer"
+          title="Já instalou ou deseja ocultar este aviso?"
+        >
+          <span className="hidden sm:inline">Já instalei / Ocultar</span>
+          <X className="w-3.5 h-3.5 text-neutral-400 hover:text-white" />
+        </button>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-1 sm:mt-0">
           
           {/* Left: Icon & Info */}
           <div className="flex items-start sm:items-center gap-3.5">

@@ -356,7 +356,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-neutral-400 mt-0.5">
-            Cadastre novos barbeiros com login, senha e comissão para que eles acessem a própria agenda.
+            Cadastre novos barbeiros com login e senha para que eles acessem a própria agenda.
           </p>
         </div>
 
@@ -389,7 +389,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
           <Scissors className="w-8 h-8 text-neutral-600 mx-auto opacity-50" />
           <p className="text-xs text-neutral-300 font-semibold">Nenhum barbeiro cadastrado no momento.</p>
           <p className="text-[11px] text-neutral-500 max-w-sm mx-auto">
-            Clique no botão acima para cadastrar o primeiro barbeiro com seu nome, login, senha e porcentagem de comissão.
+            Clique no botão acima para cadastrar o primeiro barbeiro com seu nome, login e senha.
           </p>
           <button
             onClick={handleOpenCreateNewBarber}
@@ -487,12 +487,6 @@ export const AdminBarberAccountsTab: React.FC = () => {
                         <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
                         <span className="text-neutral-400 text-[11px]">E-mail de Login:</span>
                         <strong className="text-white font-mono text-[11px] truncate">{acc.email}</strong>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Percent className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
-                        <span className="text-neutral-400 text-[11px]">Comissão por Corte:</span>
-                        <strong className="text-[#f5d77f] font-bold">{acc.commission_rate || 50}% do valor</strong>
                       </div>
 
                       {acc.phone && (
@@ -647,7 +641,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
                         className="flex items-center gap-1 rounded-lg border border-[#2b3145] bg-[#181a26] px-2.5 py-1 text-[11px] font-semibold text-neutral-300 hover:text-white hover:border-[#d4af37] transition cursor-pointer"
                       >
                         <Edit3 className="w-3 h-3 text-[#d4af37]" />
-                        <span>Alterar Senha / Comissão</span>
+                        <span>Alterar Senha</span>
                       </button>
 
                       <button
@@ -871,38 +865,18 @@ export const AdminBarberAccountsTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Comissão & Telefone */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
-                    Comissão (%)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={commissionRate}
-                      onChange={(e) => setCommissionRate(Number(e.target.value))}
-                      required
-                      className="w-full rounded-xl border border-[#2b3145] bg-[#181a26] px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none font-bold"
-                    />
-                    <span className="absolute right-3 top-2 text-xs font-bold text-[#d4af37]">%</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
-                    Telefone / WhatsApp
-                  </label>
-                  <input
-                    type="text"
-                    value={accountPhone}
-                    onChange={(e) => setAccountPhone(e.target.value)}
-                    placeholder="(11) 98765-4321"
-                    className="w-full rounded-xl border border-[#2b3145] bg-[#181a26] px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
-                  />
-                </div>
+              {/* Telefone */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1">
+                  Telefone / WhatsApp
+                </label>
+                <input
+                  type="text"
+                  value={accountPhone}
+                  onChange={(e) => setAccountPhone(e.target.value)}
+                  placeholder="(11) 98765-4321"
+                  className="w-full rounded-xl border border-[#2b3145] bg-[#181a26] px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                />
               </div>
 
               <div className="flex gap-2 pt-2">

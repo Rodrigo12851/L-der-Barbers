@@ -73,7 +73,7 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
       borderColor: 'border-blue-500/50',
       textColor: 'text-blue-300',
       iconColor: 'text-blue-400',
-      desc: 'Área exclusiva para gerenciar serviços, comissões, cadastro de barbeiros e agenda completa da barbearia.',
+      desc: 'Área exclusiva para gerenciar serviços, cadastro de barbeiros e agenda completa da barbearia.',
       path: '/admin',
       installLabel: 'Baixar App do Administrador no Celular'
     },
@@ -85,7 +85,7 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
       borderColor: 'border-emerald-500/50',
       textColor: 'text-emerald-300',
       iconColor: 'text-emerald-400',
-      desc: 'Área exclusiva para o profissional acompanhar sua agenda diária, novos agendamentos e comissões.',
+      desc: 'Área exclusiva para o profissional acompanhar sua agenda diária, novos agendamentos e faturamento.',
       path: '/barbeiro',
       installLabel: 'Baixar Meu App de Barbeiro no Celular'
     }

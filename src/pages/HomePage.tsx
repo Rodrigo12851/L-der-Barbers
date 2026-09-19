@@ -54,11 +54,6 @@ export const HomePage: React.FC = () => {
             
             {/* Left Column: Heading & Call to Action */}
             <div className="lg:col-span-7 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#d4af37]/40 bg-[#191b24] px-3.5 py-1 text-xs font-semibold text-[#f5d77f]">
-                <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" />
-                <span>Tradição, Visagismo & Alta Precisão</span>
-              </div>
-
               <h1 className="font-cinzel text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1]">
                 A ARTE DO CORTE, <br />
                 <span className="bg-gradient-to-r from-[#f5d77f] via-[#d4af37] to-[#aa8222] bg-clip-text text-transparent">
