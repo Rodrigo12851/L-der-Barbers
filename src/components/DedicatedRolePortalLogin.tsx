@@ -101,36 +101,13 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
       await login(email, password);
       if (onLoginSuccess) {
         onLoginSuccess();
-      } else {
-        navigate(config.path);
       }
+      navigate(config.path);
     } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.includes('operation-not-allowed')) {
-        setError(
-          'O método de login por E-mail/Senha está desativado no Firebase Console. Na aba aberta "erudite-component-q9v0l", acesse Authentication > Sign-in method > E-mail/senha e marque Ativar.'
-        );
-      } else {
-        setError(msg || 'Falha no login. Verifique seu e-mail e senha.');
-      }
+      setError(err.message || 'E-mail ou senha incorretos.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleOwnerDirectAccess = () => {
-    const ownerEmail = (email || 'allinesoares050@gmail.com').trim().toLowerCase();
-    const mockOwner: UserProfile = {
-      id: 'owner-' + ownerEmail.replace(/[^a-zA-Z0-9]/g, '_'),
-      email: ownerEmail,
-      name: 'Proprietário Líder Barbers',
-      role: 'owner',
-      phone: '61985429584',
-      active: true,
-    };
-    localStorage.setItem('liberdade_user', JSON.stringify(mockOwner));
-    localStorage.setItem('liberdade_token', 'direct-owner-token-' + Date.now());
-    window.location.reload();
   };
 
   const handleGoogleLogin = async () => {
@@ -140,9 +117,8 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
       await loginWithGoogle();
       if (onLoginSuccess) {
         onLoginSuccess();
-      } else {
-        navigate(config.path);
       }
+      navigate(config.path);
     } catch (err: any) {
       setError(err.message || 'Não foi possível autenticar com a Conta Google.');
     } finally {
@@ -231,25 +207,9 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
         <div className="rounded-3xl border border-[#232838] bg-[#12141c] p-6 shadow-2xl space-y-4">
           
           {error && (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 space-y-2.5">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                <span className="leading-relaxed">{error}</span>
-              </div>
-              {role === 'owner' && (
-                <div className="pt-1 border-t border-rose-500/20 flex flex-col gap-1.5">
-                  <span className="text-[11px] text-amber-300/90 font-medium">
-                    Você é o dono da barbearia? Você pode entrar diretamente no seu painel:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleOwnerDirectAccess}
-                    className="w-full py-2 px-3 rounded-lg bg-[#d4af37] text-neutral-950 font-bold text-xs hover:bg-[#c49f27] transition shadow cursor-pointer"
-                  >
-                    Acessar Painel do Proprietário Agora ➔
-                  </button>
-                </div>
-              )}
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <span className="leading-relaxed">{error}</span>
             </div>
           )}
 

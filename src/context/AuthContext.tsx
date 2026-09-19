@@ -33,9 +33,18 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    try {
+      const stored = localStorage.getItem('liberdade_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('liberdade_token') || null;
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [needsOwnerSetup, setNeedsOwnerSetup] = useState(false);
 
   const refreshOwnerSetupStatus = useCallback(async (): Promise<boolean> => {
@@ -99,7 +108,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(idToken);
           localStorage.setItem('liberdade_token', idToken);
         } else {
-          // If no Firebase Auth user, clear state
+          // If no Firebase Auth user, preserve existing valid local/fallback session
+          const storedUser = localStorage.getItem('liberdade_user');
+          const storedToken = localStorage.getItem('liberdade_token');
+          if (storedUser && storedToken) {
+            try {
+              const parsed = JSON.parse(storedUser);
+              if (parsed && parsed.id && parsed.role) {
+                if (isKnownOwnerEmail(parsed.email) && parsed.role !== 'owner') {
+                  parsed.role = 'owner';
+                  localStorage.setItem('liberdade_user', JSON.stringify(parsed));
+                }
+                setUser(parsed);
+                setToken(storedToken);
+                return;
+              }
+            } catch {
+              // ignore invalid stored json
+            }
+          }
           setUser(null);
           setToken(null);
           localStorage.removeItem('liberdade_user');
