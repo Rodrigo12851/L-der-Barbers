@@ -3,6 +3,7 @@ import { useRouter } from '../context/RouterContext';
 import { Service, Barber, AvailabilitySlot } from '../types';
 import { fetchServices, fetchBarbers, fetchAvailability, createAppointment } from '../lib/api';
 import { saveCustomerBooking, getStoredCustomerData, saveCustomerProfile, formatPhoneBR } from '../lib/customerStorage';
+import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal';
 import { 
   Scissors, 
   User, 
@@ -109,6 +110,7 @@ export const BookingFlow: React.FC = () => {
   const [conflictModalOpen, setConflictModalOpen] = useState<boolean>(false);
   const [conflictMessage, setConflictMessage] = useState<string>('');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
   // Get current date and minutes in Brazil timezone (America/Sao_Paulo)
   const getBrazilDateTime = (): { dateStr: string; currentMinutes: number; timeStr: string } => {
@@ -855,9 +857,21 @@ export const BookingFlow: React.FC = () => {
                 )}
               </button>
 
-              <div className="flex items-center justify-center gap-2 mt-2 text-[10px] text-neutral-500">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Sem taxa de cancelamento • Pagamento no local</span>
+              <div className="flex flex-col items-center justify-center gap-1.5 mt-3 text-center">
+                <div className="flex items-center justify-center gap-2 text-[10px] text-neutral-400">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Sem taxa de cancelamento • Pagamento presencial no local</span>
+                </div>
+                <p className="text-[10px] text-neutral-500 max-w-sm">
+                  Ao confirmar, você concorda com o uso dos dados informados exclusivamente para identificação do atendimento, conforme nossa{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowPrivacyModal(true)}
+                    className="text-[#d4af37] underline hover:text-[#f5d77f] transition cursor-pointer"
+                  >
+                    Política de Privacidade e LGPD
+                  </button>.
+                </p>
               </div>
             </div>
 
@@ -900,6 +914,12 @@ export const BookingFlow: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* LGPD PRIVACY POLICY MODAL */}
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
 
     </div>
   );

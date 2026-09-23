@@ -3,7 +3,7 @@ import { useRouter } from '../context/RouterContext';
 import { useSettings } from '../context/SettingsContext';
 import { Appointment } from '../types';
 import { fetchAppointmentByCode, cancelAppointmentByCode } from '../lib/api';
-import { saveCustomerBooking } from '../lib/customerStorage';
+import { saveCustomerBooking, maskPhoneNumber } from '../lib/customerStorage';
 import { 
   CheckCircle2, 
   Calendar, 
@@ -315,7 +315,7 @@ export const BookingConfirmationPage: React.FC = () => {
                 <div>
                   <span className="text-neutral-400">Agendado para: </span>
                   <strong className="text-white">{appointment.customer_name}</strong>
-                  <span className="text-neutral-400 ml-2">({appointment.customer_phone})</span>
+                  <span className="text-neutral-400 ml-2">({maskPhoneNumber(appointment.customer_phone)})</span>
                 </div>
                 <div className="text-right">
                   <span className="text-neutral-400">Total no balcão: </span>

@@ -1035,7 +1035,19 @@ app.post('/api/appointments/code/:code/cancel', (req, res) => {
 });
 
 // Appointments listing with filters (barber, date, status, period)
+// LGPD Protection: requires auth token or specific barber schedule filter to prevent customer data scrapers
 app.get('/api/appointments', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || (req.query.token as string);
+
+  // If no auth token is provided and no specific barber filter is requested, block mass dumping of client appointments
+  if (!token && (!req.query.barberId || req.query.barberId === 'all')) {
+    return res.status(401).json({
+      error: 'ACESSO_RESTRITO_LGPD',
+      message: 'Acesso restrito à equipe autorizada. Para consultar seu agendamento individual com segurança, utilize a busca por código ou telefone no portal Meus Agendamentos.'
+    });
+  }
+
   const { barberId, date, status, startDate, endDate } = req.query as {
     barberId?: string;
     date?: string;

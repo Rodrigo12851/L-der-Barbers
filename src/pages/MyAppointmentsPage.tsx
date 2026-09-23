@@ -4,6 +4,7 @@ import { useSettings } from '../context/SettingsContext';
 import { Appointment } from '../types';
 import { fetchCustomerAppointments, cancelAppointmentByCode } from '../lib/api';
 import { getStoredCustomerData, saveCustomerBooking, clearStoredCustomerData } from '../lib/customerStorage';
+import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal';
 import { 
   Calendar, 
   Clock, 
@@ -23,7 +24,9 @@ import {
   CalendarCheck,
   History,
   Info,
-  Plus
+  Plus,
+  ShieldCheck,
+  Trash2
 } from 'lucide-react';
 
 export const MyAppointmentsPage: React.FC = () => {
@@ -46,10 +49,21 @@ export const MyAppointmentsPage: React.FC = () => {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleClearMyData = () => {
+    if (window.confirm('Deseja excluir seus dados (nome, telefone e códigos de reserva) salvos neste dispositivo? Em conformidade com a LGPD (Lei 13.709/2018), suas preferências e histórico local serão completamente removidos.')) {
+      clearStoredCustomerData();
+      setStoredData({ phone: '', name: '', codes: [] });
+      setPhoneInput('');
+      setAppointments([]);
+      showToast('Seus dados foram removidos deste dispositivo em conformidade com a LGPD.');
+    }
   };
 
   const loadAppointments = async (phoneToUse?: string, codesToUse?: string[]) => {
@@ -603,6 +617,39 @@ export const MyAppointmentsPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* SEÇÃO LGPD: PRIVACIDADE & DIREITOS DO TITULAR                 */}
+            {/* ------------------------------------------------------------- */}
+            <div className="rounded-2xl border border-[#232734] bg-[#12141c] p-4 text-xs text-neutral-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-bold text-white block">Privacidade & Direitos do Titular (LGPD)</span>
+                  <span className="text-[11px] text-neutral-400">
+                    Seus dados são protegidos pela Lei 13.709/2018 e utilizados estritamente para o atendimento.
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowPrivacyModal(true)}
+                  className="rounded-xl border border-[#2e3344] bg-[#1a1d27] px-3 py-2 text-[11px] font-semibold text-neutral-200 hover:text-white hover:bg-[#202433] transition cursor-pointer"
+                >
+                  Ver Termos LGPD
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearMyData}
+                  className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] font-semibold text-rose-300 hover:bg-rose-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                  title="Exercer direito de exclusão de dados deste dispositivo (Art. 18 LGPD)"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Limpar Meus Dados</span>
+                </button>
+              </div>
+            </div>
           </>
         )}
 
@@ -664,6 +711,12 @@ export const MyAppointmentsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* LGPD PRIVACY POLICY MODAL */}
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
 
     </div>
   );

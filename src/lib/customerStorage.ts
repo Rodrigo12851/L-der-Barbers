@@ -116,3 +116,23 @@ export function saveCustomerProfile(data: { name?: string; phone?: string }) {
 export function cleanPhoneNumber(val: string): string {
   return (val || '').replace(/\D/g, '');
 }
+
+export function maskPhoneNumber(val: string): string {
+  const digits = (val || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length >= 11) {
+    const ddd = digits.slice(0, 2);
+    const firstDigit = digits.slice(2, 3);
+    const last4 = digits.slice(-4);
+    return `(${ddd}) ${firstDigit}****-${last4}`;
+  }
+  if (digits.length >= 10) {
+    const ddd = digits.slice(0, 2);
+    const last4 = digits.slice(-4);
+    return `(${ddd}) ****-${last4}`;
+  }
+  if (digits.length >= 4) {
+    return `***-` + digits.slice(-4);
+  }
+  return '***';
+}

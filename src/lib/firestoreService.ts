@@ -37,6 +37,7 @@ import {
   OwnerAccount
 } from '../types';
 import defaultDbData from '../../data/db.json';
+import { formatPhoneBR } from './customerStorage';
 
 /**
  * Creates a new user in Firebase Authentication without logging out the currently
@@ -653,6 +654,7 @@ export async function createAppointmentFS(payload: {
       barber_id: chosenBarber.id,
       customer_name: payload.customer_name,
       customer_phone: payload.customer_phone,
+      customer_phone_clean: payload.customer_phone.replace(/\D/g, ''),
       customer_email: payload.customer_email || '',
       notes: payload.notes || '',
       date: payload.date,
@@ -702,25 +704,68 @@ export async function getCustomerAppointmentsFS(params: {
   await ensureFirestoreSeeded();
   const path = 'appointments';
   try {
-    const snap = await getDocs(collection(db, path));
-    const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Appointment));
-
     const cleanQueryPhone = (params.phone || '').replace(/\D/g, '');
     const targetCodes = (params.codes || []).map(c => c.trim().toUpperCase()).filter(Boolean);
 
+    // LGPD Security Protection: Never query or return full collection without client filters
     if (!cleanQueryPhone && targetCodes.length === 0) {
       return [];
     }
 
-    const matched = all.filter(a => {
-      if (a.code && targetCodes.includes(a.code.toUpperCase())) return true;
-      if (cleanQueryPhone && cleanQueryPhone.length >= 8 && a.customer_phone) {
-        const aptPhone = a.customer_phone.replace(/\D/g, '');
-        if (aptPhone === cleanQueryPhone) return true;
-        if (aptPhone.endsWith(cleanQueryPhone) || cleanQueryPhone.endsWith(aptPhone)) return true;
+    const matchedMap = new Map<string, Appointment>();
+
+    // 1. Query strictly by confirmation codes (in batches of 10)
+    if (targetCodes.length > 0) {
+      for (let i = 0; i < targetCodes.length; i += 10) {
+        const batch = targetCodes.slice(i, i + 10);
+        try {
+          const q = query(collection(db, path), where('code', 'in', batch));
+          const snap = await getDocs(q);
+          snap.docs.forEach(d => {
+            matchedMap.set(d.id, { id: d.id, ...d.data() } as Appointment);
+          });
+        } catch (e) {
+          console.warn('Notice querying appointments by code in Firestore:', e);
+        }
       }
-      return false;
-    });
+    }
+
+    // 2. Query strictly by phone variants if phone provided
+    if (cleanQueryPhone && cleanQueryPhone.length >= 8) {
+      const phoneVariations = new Set<string>();
+      phoneVariations.add(cleanQueryPhone);
+      phoneVariations.add(formatPhoneBR(cleanQueryPhone));
+      if (cleanQueryPhone.length === 11) {
+        phoneVariations.add(cleanQueryPhone.slice(2)); // Without area code
+      }
+
+      for (const phoneVariant of phoneVariations) {
+        try {
+          const q = query(collection(db, path), where('customer_phone', '==', phoneVariant));
+          const snap = await getDocs(q);
+          snap.docs.forEach(d => {
+            matchedMap.set(d.id, { id: d.id, ...d.data() } as Appointment);
+          });
+        } catch (e) {
+          console.warn('Notice querying appointments by customer_phone in Firestore:', e);
+        }
+
+        try {
+          const qClean = query(collection(db, path), where('customer_phone_clean', '==', phoneVariant));
+          const snapClean = await getDocs(qClean);
+          snapClean.docs.forEach(d => {
+            matchedMap.set(d.id, { id: d.id, ...d.data() } as Appointment);
+          });
+        } catch {
+          // Field might not exist on older records, silent catch
+        }
+      }
+    }
+
+    const matched = Array.from(matchedMap.values());
+    if (matched.length === 0) {
+      return [];
+    }
 
     const [services, barbers] = await Promise.all([
       getServicesFS(false),

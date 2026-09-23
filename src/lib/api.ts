@@ -327,7 +327,13 @@ export async function fetchAppointments(filters?: {
       if (filters?.startDate) params.append('startDate', filters.startDate);
       if (filters?.endDate) params.append('endDate', filters.endDate);
 
-      const res = await fetch(`/api/appointments?${params.toString()}`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('liberdade_token') : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`/api/appointments?${params.toString()}`, { headers });
       if (!res.ok) throw new Error('Erro ao listar agendamentos');
       return res.json();
     }

@@ -3,10 +3,12 @@ import { useRouter } from '../context/RouterContext';
 import { useSettings } from '../context/SettingsContext';
 import { ThemeToggle } from './ThemeToggle';
 import { Scissors, MapPin, Phone, Clock, Instagram, ShieldCheck } from 'lucide-react';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
 export const Footer: React.FC = () => {
   const { navigate } = useRouter();
   const { settings } = useSettings();
+  const [showPrivacyModal, setShowPrivacyModal] = React.useState(false);
 
   return (
     <footer className="w-full border-t border-[#232733] bg-[#090a0d] text-neutral-400 text-sm">
@@ -125,13 +127,30 @@ export const Footer: React.FC = () => {
               >
                 <span>→ Nossos Mestres Barbeiros</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setShowPrivacyModal(true)}
+                className="text-left text-neutral-400 hover:text-[#d4af37] transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-[#d4af37]" />
+                <span>Privacidade & LGPD</span>
+              </button>
             </div>
           </div>
 
         </div>
 
         <div className="pt-6 border-t border-[#181a24] flex flex-col sm:flex-row items-center justify-between text-[11px] text-neutral-500 gap-3">
-          <p>© {new Date().getFullYear()} {settings.name || 'Líder Barbers'}. Todos os direitos reservados.</p>
+          <p>
+            © {new Date().getFullYear()} {settings.name || 'Líder Barbers'}. Todos os direitos reservados. •{' '}
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(true)}
+              className="hover:text-[#d4af37] underline transition cursor-pointer"
+            >
+              Termos de Privacidade & LGPD
+            </button>
+          </p>
           <div className="flex items-center gap-4">
             <span className="hidden sm:inline">Tema:</span>
             <ThemeToggle variant="segmented" className="text-[11px]" />
@@ -141,6 +160,12 @@ export const Footer: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* LGPD PRIVACY MODAL */}
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
     </footer>
   );
 };
