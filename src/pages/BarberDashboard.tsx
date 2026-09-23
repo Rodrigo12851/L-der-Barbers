@@ -65,7 +65,7 @@ export const BarberDashboard: React.FC = () => {
   const currentBarberId = selectedBarberId || user?.barber_id || user?.id || '';
   const currentBarber = allBarbers.find(b => b.id === currentBarberId) || user;
   const currentBarberName = currentBarber?.name || (currentBarber as any)?.nickname || user?.name || 'Barbeiro';
-  const clientLink = `${window.location.origin}/agendar?barbeiro=${currentBarberName}`;
+  const clientLink = `${window.location.origin}/agendar?barbeiro=${encodeURIComponent(currentBarberName)}`;
 
   const handleCopyClientLink = async () => {
     try {

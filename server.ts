@@ -44,7 +44,7 @@ const defaultData: DatabaseSchema = {
   services: [
     {
       id: 'combo-liberdade',
-      name: 'Combo Liberdade (Corte + Barba)',
+      name: 'Combo Líder (Corte + Barba)',
       description: 'Nosso atendimento assinatura: Corte degradê ou tesoura + Barboterapia completa com toalha quente, massagem facial e finalização com pomada premium.',
       price: 100,
       duration_minutes: 75,
@@ -1631,7 +1631,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Barbearia Liberdade Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Líder Barbers Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

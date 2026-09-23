@@ -205,7 +205,7 @@ export const BookingConfirmationPage: React.FC = () => {
                 AGENDAMENTO CONFIRMADO
               </h1>
               <p className="text-xs text-neutral-400">
-                Seu horário está reservado com exclusividade na Barbearia Liberdade.
+                Seu horário está reservado com exclusividade na {settings.name || 'Líder Barbers'}.
               </p>
             </div>
 
@@ -329,8 +329,8 @@ export const BookingConfirmationPage: React.FC = () => {
               <div className="mt-6 rounded-xl border border-[#272c3d] bg-[#0c0d12] p-3.5 text-xs text-neutral-300 flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-[#d4af37] shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-white block">Barbearia Liberdade — Unidade Central</strong>
-                  <span>Av. da Liberdade, 780 — Estacionamento cortesia para clientes com reserva.</span>
+                  <strong className="text-white block">{settings.name || 'Líder Barbers'} — Unidade Central</strong>
+                  <span>{settings.address || 'Av. Paulista, 1000'} — Estacionamento cortesia para clientes com reserva.</span>
                 </div>
               </div>
 

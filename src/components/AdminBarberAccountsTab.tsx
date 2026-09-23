@@ -185,7 +185,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const barberObj = allBarbers.find((b) => b.id === acc.barber_id || b.id === acc.id);
     const barberName = acc.barber_name || acc.name || barberObj?.name || acc.nickname || 'Barbeiro';
-    const clientUrl = `${origin}/agendar?barbeiro=${barberName}`;
+    const clientUrl = `${origin}/agendar?barbeiro=${encodeURIComponent(barberName)}`;
     const text = encodeURIComponent(
       `💈 *Agendamento Exclusivo — ${barberName} | Líder Barbers*\n\nReserve seu horário diretamente com ${barberName} pelo link abaixo:\n🔗 ${clientUrl}`
     );
@@ -427,7 +427,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
             const firstName = barberName.split(' ')[0] || 'Barbeiro';
             const hasAccount = Boolean(acc.has_account || acc.has_login || acc.user_id);
             const isOwnerOrAdmin = acc.barber_id === 'user-admin' || barberObj?.specialties?.includes('Admin');
-            const clientBookingUrl = `${window.location.origin}/agendar?barbeiro=${barberName}`;
+            const clientBookingUrl = `${window.location.origin}/agendar?barbeiro=${encodeURIComponent(barberName)}`;
             const barberAppUrl = `${window.location.origin}/barbeiro`;
 
             return (

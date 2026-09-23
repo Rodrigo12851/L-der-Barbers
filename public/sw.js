@@ -1,5 +1,5 @@
-// Barbearia Liberdade - Service Worker
-const CACHE_NAME = 'barbearia-liberdade-v1';
+// Líder Barbers - Service Worker
+const CACHE_NAME = 'lider-barbers-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

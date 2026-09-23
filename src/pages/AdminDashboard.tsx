@@ -93,7 +93,7 @@ export const AdminDashboard: React.FC = () => {
   const adminBarberId = user?.barber_id || user?.id || 'admin';
   const adminBarber = barbers.find(b => b.id === adminBarberId) || user;
   const adminBarberName = adminBarber?.name || (adminBarber as any)?.nickname || user?.name || 'Administrador';
-  const clientLink = `${window.location.origin}/agendar?barbeiro=${adminBarberName}`;
+  const clientLink = `${window.location.origin}/agendar?barbeiro=${encodeURIComponent(adminBarberName)}`;
 
   const handleCopyClientLink = async () => {
     try {

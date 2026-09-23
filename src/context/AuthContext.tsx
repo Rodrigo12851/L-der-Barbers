@@ -9,26 +9,26 @@ import { isKnownOwnerEmail } from '../lib/firestoreService';
 interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
-  login: (email: string, pass: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  login: (email: string, pass: string) => Promise<{ user: UserProfile; token: string }>;
+  loginWithGoogle: () => Promise<{ user: UserProfile; token: string }>;
   logout: () => void;
   isLoading: boolean;
   needsOwnerSetup: boolean;
   refreshOwnerSetupStatus: () => Promise<boolean>;
-  setupOwner: (data: { name: string; email: string; password: string; phone?: string }) => Promise<void>;
+  setupOwner: (data: { name: string; email: string; password: string; phone?: string }) => Promise<{ user: UserProfile; token: string }>;
   updateUser: (updatedUser: UserProfile) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
-  login: async () => {},
-  loginWithGoogle: async () => {},
+  login: async () => ({ user: {} as UserProfile, token: '' }),
+  loginWithGoogle: async () => ({ user: {} as UserProfile, token: '' }),
   logout: () => {},
   isLoading: true,
   needsOwnerSetup: false,
   refreshOwnerSetupStatus: async () => false,
-  setupOwner: async () => {},
+  setupOwner: async () => ({ user: {} as UserProfile, token: '' }),
   updateUser: () => {},
 });
 
@@ -156,6 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('liberdade_user', JSON.stringify(res.user));
     localStorage.setItem('liberdade_token', res.token);
     setNeedsOwnerSetup(false);
+    return res;
   };
 
   const loginWithGoogle = async () => {
@@ -165,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('liberdade_user', JSON.stringify(res.user));
     localStorage.setItem('liberdade_token', res.token);
     setNeedsOwnerSetup(false);
+    return res;
   };
 
   const setupOwner = async (data: { name: string; email: string; password: string; phone?: string }) => {
@@ -174,6 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('liberdade_user', JSON.stringify(res.user));
     localStorage.setItem('liberdade_token', res.token);
     setNeedsOwnerSetup(false);
+    return res;
   };
 
   const updateUser = (updatedUser: UserProfile) => {

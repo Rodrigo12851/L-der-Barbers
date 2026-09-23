@@ -36,7 +36,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'n
         <button
           onClick={handleInstallClick}
           className="flex items-center gap-2 rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/10 px-3 py-1.5 text-xs font-semibold text-[#f5d77f] hover:bg-[#d4af37]/20 transition shadow-sm active:scale-95"
-          title="Instalar aplicativo Barbearia Liberdade"
+          title="Instalar aplicativo Líder Barbers"
         >
           <Smartphone className="w-3.5 h-3.5 text-[#d4af37]" />
           <span>Instalar App</span>
