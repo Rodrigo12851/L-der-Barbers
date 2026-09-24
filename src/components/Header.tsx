@@ -316,20 +316,6 @@ export const Header: React.FC = () => {
                   </span>
                 </button>
 
-                {user.role === 'owner' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigate('/admin');
-                      setSideMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#12141c] border border-[#2d3345] py-1.5 text-[11px] font-semibold text-neutral-300 hover:text-white hover:border-[#d4af37]/50 transition cursor-pointer"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-[#d4af37]" />
-                    <span>Ver Painel do Administrador</span>
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={() => {

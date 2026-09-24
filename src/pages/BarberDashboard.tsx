@@ -37,7 +37,8 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Share2
+  Share2,
+  Crown
 } from 'lucide-react';
 import { BarberRevenueTab } from '../components/BarberRevenueTab';
 import { RoleAppDownloadCard } from '../components/RoleAppDownloadCard';
@@ -115,9 +116,13 @@ export const BarberDashboard: React.FC = () => {
   tomorrowObj.setDate(tomorrowObj.getDate() + 1);
   const tomorrowStr = tomorrowObj.toISOString().split('T')[0];
 
+  // Segregação estrita de funções (LGPD & blindagem jurídica do proprietário)
+  // O Dono/Proprietário NÃO deve ter acesso à agenda operacional dos barbeiros
   useEffect(() => {
-    // Session is checked inline in render
-  }, [user, authLoading]);
+    if (!authLoading && user && user.role === 'owner') {
+      navigate('/proprietario');
+    }
+  }, [user, authLoading, navigate]);
 
   // Determine current barberId & always load barber profiles
   useEffect(() => {
@@ -416,6 +421,29 @@ export const BarberDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#0d0e11]">
         <DedicatedRolePortalLogin role="barber" onLoginSuccess={() => window.location.reload()} />
+      </div>
+    );
+  }
+
+  // If user is owner, block access to barber operations (Legal & LGPD Protection)
+  if (user.role === 'owner') {
+    return (
+      <div className="min-h-screen bg-[#0d0e11] flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-2xl border border-[#d4af37]/40 bg-[#12141c] p-6 text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/20 border border-[#d4af37] flex items-center justify-center text-[#d4af37] mx-auto">
+            <Crown className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-white font-cinzel">Área Operacional Restrita</h2>
+          <p className="text-xs text-neutral-300 leading-relaxed">
+            Por conformidade com a <strong>LGPD</strong> e para sua <strong>proteção jurídica como Proprietário</strong>, o acesso à agenda operacional e dados pessoais de atendimentos é restrito exclusivamente aos profissionais da barbearia.
+          </p>
+          <button
+            onClick={() => navigate('/proprietario')}
+            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa8222] text-[#0d0e11] font-black text-xs hover:brightness-110 transition shadow-lg shadow-[#d4af37]/20 cursor-pointer"
+          >
+            Acessar Minha Área de Proprietário
+          </button>
+        </div>
       </div>
     );
   }

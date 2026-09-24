@@ -101,13 +101,24 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
         setError('Apenas o e-mail oficial do proprietário (rs3043017@gmail.com) tem acesso à área do dono.');
         return;
       }
+    } else {
+      const normEmail = email.trim().toLowerCase();
+      if (normEmail === 'rs3043017@gmail.com') {
+        setError('O Proprietário deve acessar exclusivamente pelo Portal do Dono (/proprietario). Por conformidade LGPD e segurança jurídica, o dono não acessa áreas operacionais.');
+        return;
+      }
     }
 
     setLoading(true);
     setError(null);
 
     try {
-      await login(email, password);
+      const res = await login(email, password);
+      if (res && res.user && role !== 'owner' && res.user.role === 'owner') {
+        setError('O Proprietário possui acesso exclusivo pelo Painel do Dono. Áreas operacionais são restritas à equipe.');
+        navigate('/proprietario');
+        return;
+      }
       if (onLoginSuccess) {
         onLoginSuccess();
       }
@@ -126,6 +137,10 @@ export const DedicatedRolePortalLogin: React.FC<DedicatedRolePortalLoginProps> =
       const res = await loginWithGoogle();
       if (role === 'owner' && res?.user?.email?.toLowerCase().trim() !== 'rs3043017@gmail.com') {
         throw new Error('Apenas o e-mail oficial do proprietário (rs3043017@gmail.com) tem acesso à área do dono.');
+      }
+      if (role !== 'owner' && (res?.user?.role === 'owner' || res?.user?.email?.toLowerCase().trim() === 'rs3043017@gmail.com')) {
+        navigate('/proprietario');
+        return;
       }
       if (onLoginSuccess) {
         onLoginSuccess();

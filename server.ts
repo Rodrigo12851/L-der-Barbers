@@ -604,8 +604,8 @@ app.get('/api/settings', (req, res) => {
     db.settings = {
       name: 'Líder Barbers',
       tagline: 'Barbearia Clássica & Moderna',
-      logo_url: '',
-      hero_image_url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80',
+      logo_url: '/logo.png',
+      hero_image_url: '/cover.svg',
       phone: '(11) 98765-4321',
       address: 'Av. Principal, 780'
     };
@@ -618,8 +618,8 @@ app.put('/api/settings', (req, res) => {
     db.settings = {
       name: 'Líder Barbers',
       tagline: 'Barbearia Clássica & Moderna',
-      logo_url: '',
-      hero_image_url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&auto=format&fit=crop&q=80',
+      logo_url: '/logo.png',
+      hero_image_url: '/cover.svg',
       phone: '(11) 98765-4321',
       address: 'Av. Principal, 780'
     };

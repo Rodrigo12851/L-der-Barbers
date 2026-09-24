@@ -154,12 +154,17 @@ export const AdminDashboard: React.FC = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Protect admin and owner access
+  // Protect admin access: Segregação estrita de funções (LGPD & blindagem jurídica do proprietário)
+  // O Dono/Proprietário NÃO deve ter acesso ao painel operacional do Administrador ou Barbeiro
   useEffect(() => {
-    if (!authLoading && user && user.role !== 'admin' && user.role !== 'owner') {
-      navigate('/barbeiro');
+    if (!authLoading && user) {
+      if (user.role === 'owner') {
+        navigate('/proprietario');
+      } else if (user.role !== 'admin') {
+        navigate('/barbeiro');
+      }
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, navigate]);
 
   const knownAptIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef<boolean>(true);
@@ -188,7 +193,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user?.role !== 'admin' && user?.role !== 'owner') return;
+    if (user?.role !== 'admin') return;
 
     // 1. Initial Load
     loadAll(false);
@@ -386,8 +391,31 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  // If user is not an admin or owner, notice
-  if (user.role !== 'admin' && user.role !== 'owner') {
+  // If user is owner, block access to administrative operations (Legal & LGPD Protection)
+  if (user.role === 'owner') {
+    return (
+      <div className="min-h-screen bg-[#0d0e11] flex items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-2xl border border-[#d4af37]/40 bg-[#12141c] p-6 text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/20 border border-[#d4af37] flex items-center justify-center text-[#d4af37] mx-auto">
+            <Crown className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-white font-cinzel">Área Operacional Restrita</h2>
+          <p className="text-xs text-neutral-300 leading-relaxed">
+            Por conformidade com a <strong>LGPD</strong> e para sua <strong>proteção jurídica como Proprietário</strong>, o acesso à gestão operacional direta da barbearia e dados pessoais de clientes é restrito exclusivamente aos Administradores e Barbeiros.
+          </p>
+          <button
+            onClick={() => navigate('/proprietario')}
+            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa8222] text-[#0d0e11] font-black text-xs hover:brightness-110 transition shadow-lg shadow-[#d4af37]/20 cursor-pointer"
+          >
+            Acessar Minha Área de Proprietário
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not an admin, notice
+  if (user.role !== 'admin') {
     return (
       <div className="min-h-screen bg-[#0d0e11] flex items-center justify-center p-4">
         <div className="max-w-md w-full rounded-2xl border border-[#262b3a] bg-[#12141c] p-6 text-center space-y-3">
@@ -398,7 +426,7 @@ export const AdminDashboard: React.FC = () => {
           </p>
           <button
             onClick={() => navigate('/barbeiro')}
-            className="w-full py-2.5 rounded-xl bg-[#d4af37] text-black font-bold text-xs"
+            className="w-full py-2.5 rounded-xl bg-[#d4af37] text-black font-bold text-xs cursor-pointer"
           >
             Ir para Meu Painel de Barbeiro
           </button>
@@ -447,17 +475,6 @@ export const AdminDashboard: React.FC = () => {
               {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedLink ? 'Link Copiado!' : 'Copiar meu link de cliente'}</span>
             </button>
-
-            {user.role === 'owner' && (
-              <button
-                onClick={() => navigate('/proprietario')}
-                className="flex items-center gap-1.5 rounded-xl border border-[#d4af37] bg-[#d4af37]/15 px-3 py-1.5 text-xs font-black text-[#f5d77f] hover:bg-[#d4af37]/25 cursor-pointer"
-                title="Voltar para a área de proprietário"
-              >
-                <Crown className="w-3.5 h-3.5 text-[#d4af37]" />
-                <span>Área do Dono</span>
-              </button>
-            )}
 
             {/* Realtime Live Indicator */}
             <div className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1.5 text-[11px] font-bold text-emerald-400">
@@ -550,31 +567,6 @@ export const AdminDashboard: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {/* Banner if viewing as owner */}
-        {user.role === 'owner' && (
-          <div className="rounded-2xl border border-[#d4af37]/40 bg-[#d4af37]/10 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#d4af37]/20 border border-[#d4af37] flex items-center justify-center text-[#f5d77f] shrink-0">
-                <Crown className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">
-                  Você está visualizando o Painel da Barbearia como <span className="text-[#f5d77f]">Dono do Aplicativo</span>
-                </p>
-                <p className="text-[11px] text-neutral-300">
-                  Aqui o seu Administrador gerencia e cadastra os <strong className="text-white">Barbeiros</strong>, serviços e atendimentos.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/proprietario')}
-              className="flex items-center gap-1.5 rounded-xl bg-[#d4af37] px-3.5 py-1.5 text-xs font-black text-[#0d0e11] hover:brightness-110 transition cursor-pointer shrink-0"
-            >
-              <span>← Voltar para Cadastrar Admins</span>
-            </button>
-          </div>
-        )}
 
         {/* Navigation Tabs - Compact with Horizontal Scroll on Mobile */}
         <div className="flex border-b border-[#232733] gap-1 overflow-x-auto pb-1 no-scrollbar">

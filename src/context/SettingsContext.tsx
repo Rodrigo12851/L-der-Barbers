@@ -5,7 +5,7 @@ import { fetchShopSettings, updateShopSettings as apiUpdateShopSettings } from '
 const DEFAULT_SETTINGS: ShopSettings = {
   name: 'Líder Barbers',
   tagline: 'Barbearia Clássica & Moderna',
-  logo_url: '',
+  logo_url: '/logo.png',
   hero_image_url: '/cover.svg',
   phone: '(11) 98765-4321',
   address: 'Av. Paulista, 1000 — São Paulo, SP'
@@ -31,6 +31,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (parsed.hero_image_url && parsed.hero_image_url.includes('unsplash.com')) {
           parsed.hero_image_url = '/cover.svg';
         }
+        if (!parsed.logo_url || parsed.logo_url.startsWith('data:')) {
+          parsed.logo_url = '/logo.png';
+        }
         return { ...DEFAULT_SETTINGS, ...parsed };
       }
     } catch (e) {
@@ -46,6 +49,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (data && data.name) {
         if (data.hero_image_url && data.hero_image_url.includes('unsplash.com')) {
           data.hero_image_url = '/cover.svg';
+        }
+        if (!data.logo_url || data.logo_url.startsWith('data:')) {
+          data.logo_url = '/logo.png';
         }
         const merged = { ...DEFAULT_SETTINGS, ...data };
         setSettings(merged);

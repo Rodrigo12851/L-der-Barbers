@@ -386,15 +386,6 @@ export const OwnerDashboard: React.FC = () => {
 
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => navigate('/admin')}
-              className="flex items-center gap-1.5 rounded-xl border border-[#d4af37]/50 bg-[#191c28] px-3 py-2 text-xs font-bold text-[#f5d77f] hover:bg-[#202534] transition cursor-pointer"
-              title="Abrir painel da barbearia"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-[#d4af37]" />
-              <span>Painel Admin</span>
-            </button>
-
-            <button
               onClick={handleRefresh}
               disabled={loading || refreshing}
               className="flex items-center gap-1 rounded-xl border border-[#2b3145] bg-[#161824] px-3 py-2 text-xs font-semibold text-neutral-300 hover:text-white transition cursor-pointer"
