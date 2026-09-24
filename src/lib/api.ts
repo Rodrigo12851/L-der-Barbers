@@ -671,3 +671,54 @@ export async function deleteBarberAccount(id: string): Promise<void> {
     }
   );
 }
+
+// ---------------- SELF-SERVICE CREDENTIALS (ADMIN & BARBER) ----------------
+export async function changeAdminCredentials(data: {
+  currentEmail: string;
+  currentPassword: string;
+  newEmail: string;
+  newPassword: string;
+  adminId?: string;
+}): Promise<{ user: UserProfile; message?: string }> {
+  return tryFirestoreOrApi(
+    () => FS.changeAdminCredentialsFS(data),
+    async () => {
+      const res = await fetch('/api/admin/change-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao alterar credenciais do administrador');
+      }
+      return res.json();
+    }
+  );
+}
+
+export async function changeBarberCredentials(data: {
+  currentEmail: string;
+  currentPassword: string;
+  newEmail: string;
+  newPassword: string;
+  userId?: string;
+  barberId?: string;
+}): Promise<{ user: UserProfile; message?: string }> {
+  return tryFirestoreOrApi(
+    () => FS.changeBarberCredentialsFS(data),
+    async () => {
+      const res = await fetch('/api/barber/change-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao alterar credenciais do barbeiro');
+      }
+      return res.json();
+    }
+  );
+}
+

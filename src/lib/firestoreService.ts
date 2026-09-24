@@ -1549,6 +1549,7 @@ export async function getOwnerAdminsFS(): Promise<AdminAccount[]> {
         id: u.id,
         name: u.name,
         email: u.email,
+        password: u.password || 'admin123',
         phone: u.phone,
         active: u.active !== false,
         role: 'admin' as const,
@@ -1566,6 +1567,7 @@ export async function getOwnerAdminsFS(): Promise<AdminAccount[]> {
       id: u.id,
       name: u.name,
       email: u.email,
+      password: u.password || 'admin123',
       phone: u.phone,
       active: u.active !== false,
       role: 'admin' as const,
@@ -1586,6 +1588,7 @@ export async function createAdminAccountFS(data: {
   const newAdmin = {
     id: uid,
     email: normalizedEmail,
+    password: data.password.trim(),
     name: data.name.trim(),
     role: 'admin',
     phone: data.phone?.trim() || '',
@@ -1597,6 +1600,7 @@ export async function createAdminAccountFS(data: {
     id: uid,
     name: data.name,
     email: normalizedEmail,
+    password: data.password.trim(),
     phone: data.phone,
     active: true,
     role: 'admin',
@@ -1612,13 +1616,28 @@ export async function updateAdminAccountFS(
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error('Administrador não encontrado');
   const cur = snap.data();
-  const { password: _pass, ...cleanData } = data;
-  const updated = { ...cur, ...cleanData };
-  await setDoc(ref, updated);
+  const updated = { ...cur, ...data };
+  if (data.password && data.password.trim()) {
+    updated.password = data.password.trim();
+  }
+  if (data.email) {
+    updated.email = data.email.trim().toLowerCase();
+  }
+  if (data.name) {
+    updated.name = data.name.trim();
+  }
+  if (data.phone !== undefined) {
+    updated.phone = data.phone.trim();
+  }
+  if (data.active !== undefined) {
+    updated.active = data.active;
+  }
+  await setDoc(ref, updated, { merge: true });
   return {
     id,
     name: updated.name,
     email: updated.email,
+    password: updated.password || 'admin123',
     phone: updated.phone,
     active: updated.active !== false,
     role: 'admin',
@@ -1688,6 +1707,7 @@ export async function getAdminBarberAccountsFS(): Promise<BarberAccount[]> {
       barber_nickname: resolvedNickname,
       photo_url: b.photo_url || user?.photo_url || '',
       email: user?.email || b.login_email || b.email || '',
+      password: user?.password || (b as any).password || 'barbeiro123',
       phone: user?.phone || b.phone || '',
       active: user ? (user.active !== false) : (b.active !== false),
       commission_rate: b.commission_rate !== undefined ? b.commission_rate : (user?.commission_rate ?? 50),
@@ -1711,6 +1731,7 @@ export async function createBarberAccountFS(data: {
   const newUser = {
     id: uid,
     email: normalizedEmail,
+    password: data.password.trim(),
     name: data.name || 'Barbeiro',
     role: 'barber',
     barber_id: data.barber_id,
@@ -1728,6 +1749,7 @@ export async function createBarberAccountFS(data: {
       commission_rate: data.commission_rate,
       has_login: true,
       login_email: normalizedEmail,
+      password: data.password.trim(),
     });
   } catch (e) {
     console.warn('Barber profile update notice:', e);
@@ -1748,15 +1770,33 @@ export async function updateBarberAccountFS(
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error('Conta de barbeiro não encontrada');
   const cur = snap.data();
-  const { password: _pass, ...cleanData } = data;
-  const updated = { ...cur, ...cleanData };
-  await setDoc(ref, updated);
+  const updated = { ...cur, ...data };
+  if (data.password && data.password.trim()) {
+    updated.password = data.password.trim();
+  }
+  if (data.email) {
+    updated.email = data.email.trim().toLowerCase();
+  }
+  if (data.name) {
+    updated.name = data.name.trim();
+  }
+  if (data.phone !== undefined) {
+    updated.phone = data.phone.trim();
+  }
+  if (data.active !== undefined) {
+    updated.active = data.active;
+  }
+  await setDoc(ref, updated, { merge: true });
 
-  if (updated.barber_id && data.commission_rate !== undefined) {
+  if (updated.barber_id) {
     try {
-      await updateDoc(doc(db, 'barbers', updated.barber_id), {
-        commission_rate: data.commission_rate,
-      });
+      const barberUpdates: any = {};
+      if (data.commission_rate !== undefined) barberUpdates.commission_rate = data.commission_rate;
+      if (data.email) barberUpdates.login_email = data.email.trim().toLowerCase();
+      if (data.password && data.password.trim()) barberUpdates.password = data.password.trim();
+      if (Object.keys(barberUpdates).length > 0) {
+        await updateDoc(doc(db, 'barbers', updated.barber_id), barberUpdates);
+      }
     } catch (e) {
       // ignore
     }
@@ -1770,4 +1810,207 @@ export async function updateBarberAccountFS(
 
 export async function deleteBarberAccountFS(id: string): Promise<void> {
   await deleteDoc(doc(db, 'users', id));
+}
+
+// ---------------- SELF-SERVICE CREDENTIAL CHANGE (WITH OLD EMAIL & OLD PASS VALIDATION) ----------------
+export async function changeAdminCredentialsFS(data: {
+  currentEmail: string;
+  currentPassword: string;
+  newEmail: string;
+  newPassword: string;
+  adminId?: string;
+}): Promise<{ user: UserProfile; message: string }> {
+  const normCurrent = (data.currentEmail || '').trim().toLowerCase();
+  const normNew = (data.newEmail || '').trim().toLowerCase();
+  const currentPass = (data.currentPassword || '').trim();
+  const newPass = (data.newPassword || '').trim();
+
+  if (!normCurrent || !currentPass || !normNew || !newPass) {
+    throw new Error('Todos os campos são obrigatórios: e-mail antigo, senha antiga, novo e-mail e nova senha.');
+  }
+
+  if (newPass.length < 4) {
+    throw new Error('A nova senha deve possuir no mínimo 4 caracteres.');
+  }
+
+  await ensureFirestoreSeeded();
+
+  const snap = await getDocs(collection(db, 'users'));
+  const matchedDoc = snap.docs.find(d => {
+    const u = d.data();
+    return u.role === 'admin' && (u.email || '').trim().toLowerCase() === normCurrent;
+  });
+
+  let targetDocId = matchedDoc ? matchedDoc.id : (data.adminId || '');
+  let curData: any = matchedDoc ? matchedDoc.data() : null;
+
+  if (!matchedDoc) {
+    const seedMatch = (defaultDbData.users as any[])?.find(
+      u => u.role === 'admin' && (u.email || '').trim().toLowerCase() === normCurrent
+    );
+    if (!seedMatch || (seedMatch.password && seedMatch.password !== currentPass)) {
+      throw new Error('E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.');
+    }
+    curData = seedMatch;
+    targetDocId = seedMatch.id || `user-admin-${Date.now()}`;
+  } else {
+    const expectedPass = curData.password || 'admin123';
+    if (expectedPass !== currentPass) {
+      throw new Error('E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.');
+    }
+  }
+
+  // Check collision if email changed
+  if (normCurrent !== normNew) {
+    const collision = snap.docs.find(d => {
+      if (d.id === targetDocId) return false;
+      return (d.data().email || '').trim().toLowerCase() === normNew;
+    });
+    if (collision) {
+      throw new Error('O novo e-mail informado já está em uso por outro usuário.');
+    }
+  }
+
+  const updatedAdmin = {
+    ...curData,
+    id: targetDocId,
+    email: normNew,
+    password: newPass,
+    role: 'admin',
+    updated_at: new Date().toISOString()
+  };
+
+  await setDoc(doc(db, 'users', targetDocId), updatedAdmin, { merge: true });
+
+  // Update matching barber profile if linked
+  if (updatedAdmin.barber_id || targetDocId) {
+    try {
+      const bSnap = await getDocs(collection(db, 'barbers'));
+      const bDoc = bSnap.docs.find(d => d.id === updatedAdmin.barber_id || d.id === targetDocId);
+      if (bDoc) {
+        await updateDoc(doc(db, 'barbers', bDoc.id), {
+          login_email: normNew,
+          email: normNew,
+          password: newPass
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  return {
+    user: {
+      id: targetDocId,
+      name: updatedAdmin.name || 'Administrador',
+      email: normNew,
+      role: 'admin',
+      phone: updatedAdmin.phone || '',
+      barber_id: updatedAdmin.barber_id,
+      active: true
+    },
+    message: 'Credenciais de Administrador atualizadas com sucesso! O Dono agora visualiza seus dados atualizados.'
+  };
+}
+
+export async function changeBarberCredentialsFS(data: {
+  currentEmail: string;
+  currentPassword: string;
+  newEmail: string;
+  newPassword: string;
+  userId?: string;
+  barberId?: string;
+}): Promise<{ user: UserProfile; message: string }> {
+  const normCurrent = (data.currentEmail || '').trim().toLowerCase();
+  const normNew = (data.newEmail || '').trim().toLowerCase();
+  const currentPass = (data.currentPassword || '').trim();
+  const newPass = (data.newPassword || '').trim();
+
+  if (!normCurrent || !currentPass || !normNew || !newPass) {
+    throw new Error('Todos os campos são obrigatórios: e-mail antigo, senha antiga, novo e-mail e nova senha.');
+  }
+
+  if (newPass.length < 4) {
+    throw new Error('A nova senha deve possuir no mínimo 4 caracteres.');
+  }
+
+  await ensureFirestoreSeeded();
+
+  const snap = await getDocs(collection(db, 'users'));
+  const matchedDoc = snap.docs.find(d => {
+    const u = d.data();
+    return u.role === 'barber' && (
+      (u.email || '').trim().toLowerCase() === normCurrent ||
+      (data.userId && d.id === data.userId) ||
+      (data.barberId && u.barber_id === data.barberId)
+    );
+  });
+
+  let targetDocId = matchedDoc ? matchedDoc.id : (data.userId || '');
+  let curData: any = matchedDoc ? matchedDoc.data() : null;
+
+  if (!matchedDoc) {
+    const seedMatch = (defaultDbData.users as any[])?.find(
+      u => u.role === 'barber' && (u.email || '').trim().toLowerCase() === normCurrent
+    );
+    if (!seedMatch || (seedMatch.password && seedMatch.password !== currentPass)) {
+      throw new Error('E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.');
+    }
+    curData = seedMatch;
+    targetDocId = seedMatch.id || `user-barber-${Date.now()}`;
+  } else {
+    const expectedPass = curData.password || 'barbeiro123';
+    if (expectedPass !== currentPass) {
+      throw new Error('E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.');
+    }
+  }
+
+  // Check collision if email changed
+  if (normCurrent !== normNew) {
+    const collision = snap.docs.find(d => {
+      if (d.id === targetDocId) return false;
+      return (d.data().email || '').trim().toLowerCase() === normNew;
+    });
+    if (collision) {
+      throw new Error('O novo e-mail informado já está em uso por outro usuário.');
+    }
+  }
+
+  const updatedBarber = {
+    ...curData,
+    id: targetDocId,
+    email: normNew,
+    password: newPass,
+    role: 'barber',
+    updated_at: new Date().toISOString()
+  };
+
+  await setDoc(doc(db, 'users', targetDocId), updatedBarber, { merge: true });
+
+  // Update matching barber document in 'barbers' collection
+  const barberIdToUpdate = updatedBarber.barber_id || data.barberId;
+  if (barberIdToUpdate) {
+    try {
+      await updateDoc(doc(db, 'barbers', barberIdToUpdate), {
+        login_email: normNew,
+        email: normNew,
+        password: newPass
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  return {
+    user: {
+      id: targetDocId,
+      name: updatedBarber.name || 'Barbeiro',
+      email: normNew,
+      role: 'barber',
+      phone: updatedBarber.phone || '',
+      barber_id: barberIdToUpdate,
+      active: true
+    },
+    message: 'Credenciais de Barbeiro atualizadas com sucesso! O Administrador agora visualiza seus dados atualizados.'
+  };
 }

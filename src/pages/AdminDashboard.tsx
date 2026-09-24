@@ -15,7 +15,8 @@ import {
   createBarber,
   updateBarber,
   fetchAdminMetrics,
-  subscribeToAppointments
+  subscribeToAppointments,
+  changeAdminCredentials
 } from '../lib/api';
 import { 
   DollarSign, 
@@ -28,24 +29,29 @@ import {
   CheckCircle2, 
   XCircle, 
   AlertTriangle, 
-  AlertCircle,
+  AlertCircle, 
   Filter, 
   Clock, 
   Shield, 
-  LogOut,
-  RefreshCw,
-  Search,
-  Check,
-  Image as ImageIcon,
-  Upload,
-  Camera,
-  Key,
-  Crown,
-  Copy,
-  ExternalLink,
-  Share2,
-  Phone,
-  MessageCircle
+  LogOut, 
+  RefreshCw, 
+  Search, 
+  Check, 
+  Image as ImageIcon, 
+  Upload, 
+  Camera, 
+  Key, 
+  Crown, 
+  Copy, 
+  ExternalLink, 
+  Share2, 
+  Phone, 
+  MessageCircle,
+  Lock,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Mail
 } from 'lucide-react';
 import { AdminBarberAccountsTab } from '../components/AdminBarberAccountsTab';
 import { RoleAppDownloadCard } from '../components/RoleAppDownloadCard';
@@ -54,11 +60,78 @@ import { ThemeToggle } from '../components/ThemeToggle';
 
 export const AdminDashboard: React.FC = () => {
   const { navigate } = useRouter();
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, logout, isLoading: authLoading, updateUser } = useAuth();
   const { settings } = useSettings();
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'metricas' | 'agendamentos' | 'servicos' | 'barbeiros' | 'acessos' | 'identidade'>('metricas');
+  const [activeTab, setActiveTab] = useState<'metricas' | 'agendamentos' | 'servicos' | 'barbeiros' | 'acessos' | 'identidade' | 'credenciais'>('metricas');
+
+  // Admin Self-Service Credentials State
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [credSubmitting, setCredSubmitting] = useState(false);
+  const [credError, setCredError] = useState<string | null>(null);
+  const [credSuccess, setCredSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      if (!currentEmail) setCurrentEmail(user.email);
+      if (!newEmail) setNewEmail(user.email);
+    }
+  }, [user]);
+
+  const handleUpdateAdminCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCredError(null);
+    setCredSuccess(null);
+
+    if (!currentEmail.trim() || !currentPassword.trim() || !newEmail.trim() || !newPassword.trim()) {
+      setCredError('Preencha todos os campos obrigatórios (e-mail antigo, senha antiga, novo e-mail e nova senha).');
+      return;
+    }
+
+    if (newPassword.trim().length < 4) {
+      setCredError('A nova senha deve possuir pelo menos 4 caracteres.');
+      return;
+    }
+
+    if (newPassword.trim() !== confirmNewPassword.trim()) {
+      setCredError('A confirmação da nova senha não confere.');
+      return;
+    }
+
+    setCredSubmitting(true);
+    try {
+      const res = await changeAdminCredentials({
+        currentEmail: currentEmail.trim(),
+        currentPassword: currentPassword.trim(),
+        newEmail: newEmail.trim(),
+        newPassword: newPassword.trim(),
+        adminId: user?.id,
+      });
+
+      if (res.user && updateUser) {
+        updateUser(res.user);
+      }
+
+      setCredSuccess(res.message || 'Credenciais atualizadas com sucesso! O Dono do app já visualiza seu novo login e senha no Painel do Proprietário.');
+      showToast('Credenciais atualizadas com sucesso!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setCurrentEmail(newEmail.trim());
+    } catch (err: any) {
+      setCredError(err.message || 'Erro ao alterar credenciais. Verifique se o e-mail antigo e a senha antiga estão corretos.');
+    } finally {
+      setCredSubmitting(false);
+    }
+  };
 
   // Copy code feedback
   const [copiedAptCode, setCopiedAptCode] = useState<string | null>(null);
@@ -656,6 +729,19 @@ export const AdminDashboard: React.FC = () => {
             <ImageIcon className="w-3.5 h-3.5 text-[#d4af37]" />
             <span>Logo & Capa</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('credenciais')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-t-xl transition border-b-2 shrink-0 cursor-pointer ${
+              activeTab === 'credenciais'
+                ? 'border-[#d4af37] bg-[#161822] text-[#f5d77f]'
+                : 'border-transparent text-neutral-400 hover:text-white hover:bg-[#13151c]'
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5 text-[#d4af37]" />
+            <span>Minha Senha & E-mail</span>
+          </button>
         </div>
 
         {/* TAB 1: MÉTRICAS & FATURAMENTO */}
@@ -1215,6 +1301,197 @@ export const AdminDashboard: React.FC = () => {
         {/* TAB 5: IDENTIDADE VISUAL & FOTOS */}
         {activeTab === 'identidade' && (
           <AdminSettingsTab onNotify={showToast} />
+        )}
+
+        {/* TAB: MINHAS CREDENCIAIS (ADMIN - TROCAR EMAIL E SENHA) */}
+        {activeTab === 'credenciais' && (
+          <div className="max-w-2xl mx-auto rounded-2xl border border-[#2b3145] bg-[#12141d] p-5 sm:p-7 shadow-xl space-y-6">
+            <div className="border-b border-[#202538] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/30 text-[#d4af37]">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-white font-cinzel">
+                    Minhas Credenciais de Administrador
+                  </h2>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Atualize seu e-mail de acesso e senha. Por segurança, confirme seus dados antigos.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3.5 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-200/90 space-y-1">
+                <p className="font-semibold text-blue-100 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <span>Regra de Segurança & Sincronização</span>
+                </p>
+                <p className="text-[11px] text-blue-200/80">
+                  Para sua proteção contra alterações indevidas, informe seu e-mail antigo e senha antiga. Assim que salvar, o <strong>Proprietário do App</strong> também terá visibilidade das suas credenciais atualizadas no painel master.
+                </p>
+              </div>
+            </div>
+
+            {credError && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>{credError}</span>
+              </div>
+            )}
+
+            {credSuccess && (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-300 flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>{credSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateAdminCredentials} className="space-y-4">
+              {/* CURRENT CREDENTIALS (CONFIRMATION) */}
+              <div className="rounded-xl border border-[#23283a] bg-[#161824] p-4 space-y-3.5">
+                <div className="flex items-center gap-2 border-b border-[#23283a] pb-2">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                    1. Confirmação dos Dados Antigos (Obrigatório)
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-300 mb-1">
+                    E-mail Atual (Antigo) *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={currentEmail}
+                    onChange={(e) => setCurrentEmail(e.target.value)}
+                    placeholder="Seu e-mail atual de login"
+                    className="w-full rounded-xl border border-[#2b3145] bg-[#11131a] px-3.5 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-neutral-300">
+                      Senha Atual (Antiga) *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="text-[11px] text-neutral-400 hover:text-[#d4af37] flex items-center gap-1 cursor-pointer"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showCurrentPassword ? 'Ocultar' : 'Ver'}</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      required
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Sua senha atual"
+                      className="w-full rounded-xl border border-[#2b3145] bg-[#11131a] px-3.5 pr-10 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* NEW CREDENTIALS */}
+              <div className="rounded-xl border border-[#23283a] bg-[#161824] p-4 space-y-3.5">
+                <div className="flex items-center gap-2 border-b border-[#23283a] pb-2">
+                  <Key className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                    2. Novos Dados de Acesso
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-300 mb-1">
+                    Novo E-mail de Login *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="ex: novoadmin@liderbarbers.com"
+                    className="w-full rounded-xl border border-[#2b3145] bg-[#11131a] px-3.5 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-neutral-300">
+                      Nova Senha *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="text-[11px] text-neutral-400 hover:text-[#d4af37] flex items-center gap-1 cursor-pointer"
+                    >
+                      {showNewPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showNewPassword ? 'Ocultar' : 'Ver'}</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 4 caracteres"
+                      className="w-full rounded-xl border border-[#2b3145] bg-[#11131a] px-3.5 pr-10 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-neutral-300">
+                      Confirmar Nova Senha *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="text-[11px] text-neutral-400 hover:text-[#d4af37] flex items-center gap-1 cursor-pointer"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showConfirmPassword ? 'Ocultar' : 'Ver'}</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Repita a nova senha"
+                      className="w-full rounded-xl border border-[#2b3145] bg-[#11131a] px-3.5 pr-10 py-2 text-xs text-white placeholder-neutral-500 focus:border-[#d4af37] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={credSubmitting}
+                className="w-full rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa8222] py-2.5 text-xs font-bold text-[#0d0e11] hover:brightness-110 shadow-lg cursor-pointer transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {credSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Salvando alterações...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Salvar Novas Credenciais</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
         )}
 
       </div>

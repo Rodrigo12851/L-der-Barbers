@@ -64,6 +64,8 @@ export const OwnerDashboard: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showAdminPassMap, setShowAdminPassMap] = useState<Record<string, boolean>>({});
+  const [copiedAdminPassMap, setCopiedAdminPassMap] = useState<Record<string, boolean>>({});
 
   // Owner credentials change state
   const [currentEmail, setCurrentEmail] = useState('');
@@ -154,7 +156,7 @@ export const OwnerDashboard: React.FC = () => {
     setEditingAdmin(adm);
     setAdminName(adm.name);
     setAdminEmail(adm.email);
-    setAdminPassword(''); // Leave blank to keep current
+    setAdminPassword(adm.password || '');
     setAdminPhone(adm.phone || '');
     setFormError(null);
     setModalOpen(true);
@@ -995,6 +997,66 @@ export const OwnerDashboard: React.FC = () => {
                     </span>
                   </div>
 
+                  {/* CREDENTIALS SECTION (E-mail & Senha atualizada) */}
+                  <div className="rounded-xl border border-[#232838] bg-[#12141c] p-2.5 space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-neutral-400 font-medium flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-[#d4af37]" />
+                        <span>Login:</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-white font-mono text-[11px] font-semibold">{adm.email}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(adm.email);
+                            showToast('E-mail do administrador copiado!');
+                          }}
+                          className="p-1 rounded text-neutral-400 hover:text-white hover:bg-[#1f2433] transition cursor-pointer"
+                          title="Copiar e-mail"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-[#1d212d]">
+                      <span className="text-neutral-400 font-medium flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-[#d4af37]" />
+                        <span>Senha:</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-white font-mono text-[11px] font-bold tracking-wider">
+                          {showAdminPassMap[adm.id] ? (adm.password || 'admin123') : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminPassMap(prev => ({ ...prev, [adm.id]: !prev[adm.id] }))}
+                          className="p-1 rounded text-neutral-400 hover:text-[#d4af37] hover:bg-[#1f2433] transition cursor-pointer"
+                          title={showAdminPassMap[adm.id] ? "Ocultar senha" : "Ver senha"}
+                        >
+                          {showAdminPassMap[adm.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pass = adm.password || 'admin123';
+                            navigator.clipboard.writeText(pass);
+                            setCopiedAdminPassMap(prev => ({ ...prev, [adm.id]: true }));
+                            setTimeout(() => {
+                              setCopiedAdminPassMap(prev => ({ ...prev, [adm.id]: false }));
+                            }, 2000);
+                            showToast('Senha do administrador copiada!');
+                          }}
+                          className="p-1 rounded text-neutral-400 hover:text-white hover:bg-[#1f2433] transition cursor-pointer"
+                          title="Copiar senha"
+                        >
+                          {copiedAdminPassMap[adm.id] ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {adm.phone && (
                     <div className="text-[11px] text-neutral-400 flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#12141c]">
                       <Phone className="w-3 h-3 text-[#d4af37]" />
@@ -1021,8 +1083,9 @@ export const OwnerDashboard: React.FC = () => {
                       type="button"
                       onClick={() => {
                         const link = `${window.location.origin}/admin`;
+                        const pass = adm.password || 'admin123';
                         const text = encodeURIComponent(
-                          `Olá ${adm.name}! Aqui está seu link para acessar e baixar o App de Administrador da Líder Barbers:\n\n🔗 ${link}\n\nLogin: ${adm.email}`
+                          `Olá ${adm.name}! Aqui estão seus dados de acesso ao Painel de Administrador da Líder Barbers:\n\n🔗 Link: ${link}\n📧 Login: ${adm.email}\n🔑 Senha: ${pass}`
                         );
                         window.open(`https://api.whatsapp.com/send?phone=${adm.phone ? adm.phone.replace(/\D/g, '') : ''}&text=${text}`, '_blank');
                       }}

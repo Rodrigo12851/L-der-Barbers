@@ -548,7 +548,8 @@
       "role": "admin",
       "active": true,
       "barber_id": "user-admin",
-      "phone": ""
+      "phone": "",
+      "password": "admin123"
     },
     {
       "id": "user-marcos",
@@ -556,7 +557,8 @@
       "name": "Marcos Valente",
       "role": "barber",
       "barber_id": "barber-1",
-      "active": true
+      "active": true,
+      "password": "barbeiro123"
     },
     {
       "id": "user-diego",
@@ -564,7 +566,8 @@
       "name": "Diego Castro",
       "role": "barber",
       "barber_id": "barber-2",
-      "active": true
+      "active": true,
+      "password": "barbeiro123"
     },
     {
       "id": "user-andre",
@@ -572,7 +575,8 @@
       "name": "André Santana",
       "role": "barber",
       "barber_id": "barber-3",
-      "active": true
+      "active": true,
+      "password": "barbeiro123"
     }
   ]
 }

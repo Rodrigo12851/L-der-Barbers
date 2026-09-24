@@ -1349,7 +1349,7 @@ app.post('/api/owner/credentials', (req, res) => {
 app.get('/api/owner/admins', (req, res) => {
   const admins = db.users
     .filter(u => u.role === 'admin')
-    .map(({ password: _, ...rest }) => rest);
+    .map(u => ({ ...u, password: u.password || 'admin123' }));
   res.json(admins);
 });
 
@@ -1416,8 +1416,7 @@ app.post('/api/owner/admins', (req, res) => {
 
   saveDb();
 
-  const { password: _, ...safeAdmin } = newAdmin;
-  res.status(201).json(safeAdmin);
+  res.status(201).json(newAdmin);
 });
 
 app.put('/api/owner/admins/:id', (req, res) => {
@@ -1450,8 +1449,56 @@ app.put('/api/owner/admins/:id', (req, res) => {
   }
 
   saveDb();
-  const { password: _, ...safeAdmin } = admin;
-  res.json(safeAdmin);
+  res.json(admin);
+});
+
+app.post('/api/admin/change-credentials', (req, res) => {
+  const { currentEmail, currentPassword, newEmail, newPassword } = req.body;
+  if (!currentEmail || !currentPassword || !newEmail || !newPassword) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios (e-mail antigo, senha antiga, novo e-mail e nova senha).' });
+  }
+
+  const normalizedCurrent = currentEmail.toLowerCase().trim();
+  const normalizedNew = newEmail.toLowerCase().trim();
+
+  const admin = db.users.find(u => u.role === 'admin' && u.email?.toLowerCase().trim() === normalizedCurrent);
+  if (!admin) {
+    return res.status(401).json({ error: 'E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.' });
+  }
+
+  const registeredPass = admin.password || 'admin123';
+  if (registeredPass !== currentPassword) {
+    return res.status(401).json({ error: 'E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.' });
+  }
+
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'A nova senha deve possuir no mínimo 4 caracteres.' });
+  }
+
+  if (normalizedCurrent !== normalizedNew) {
+    const collision = db.users.find(u => u.id !== admin.id && u.email?.toLowerCase().trim() === normalizedNew);
+    if (collision) {
+      return res.status(409).json({ error: 'O novo e-mail já está em uso por outro usuário.' });
+    }
+  }
+
+  admin.email = normalizedNew;
+  admin.password = newPassword.trim();
+  (admin as any).updated_at = new Date().toISOString();
+
+  // Also update matching barber profile
+  const adminBarber = db.barbers.find(b => b.id === admin.id || b.id === admin.barber_id || (b as any).user_id === admin.id);
+  if (adminBarber) {
+    adminBarber.email = normalizedNew;
+  }
+
+  saveDb();
+
+  res.json({
+    success: true,
+    message: 'Credenciais de administrador atualizadas com sucesso!',
+    user: admin
+  });
 });
 
 app.delete('/api/owner/admins/:id', (req, res) => {
@@ -1490,6 +1537,7 @@ app.get('/api/admin/barber-accounts', (req, res) => {
       phone: user?.phone || b.phone || '',
       commission_rate: b.commission_rate ?? user?.commission_rate ?? 50,
       email: user ? user.email : (b.email || ''),
+      password: user?.password || (b as any).password || 'barbeiro123',
       has_account: !!user,
       has_login: !!user,
       active: user ? (user.active !== false) : (b.active !== false)
@@ -1522,9 +1570,9 @@ app.post('/api/admin/barber-accounts', (req, res) => {
     existingUser.phone = phone ? phone.trim() : barber.phone;
     existingUser.commission_rate = rate;
     existingUser.active = true;
+    (barber as any).password = password.trim();
     saveDb();
-    const { password: _, ...safe } = existingUser;
-    return res.json({ success: true, user: safe, message: 'Acesso do barbeiro atualizado.' });
+    return res.json({ success: true, user: existingUser, message: 'Acesso do barbeiro atualizado.' });
   }
 
   const newUser = {
@@ -1541,10 +1589,10 @@ app.post('/api/admin/barber-accounts', (req, res) => {
   };
 
   db.users.push(newUser);
+  (barber as any).password = password.trim();
   saveDb();
 
-  const { password: _, ...safe } = newUser;
-  res.status(201).json({ success: true, user: safe, message: 'Acesso criado com sucesso para o barbeiro.' });
+  res.status(201).json({ success: true, user: newUser, message: 'Acesso criado com sucesso para o barbeiro.' });
 });
 
 app.put('/api/admin/barber-accounts/:id', (req, res) => {
@@ -1568,9 +1616,62 @@ app.put('/api/admin/barber-accounts/:id', (req, res) => {
     user.email = normalized;
   }
 
+  if (password && password.trim()) {
+    const barber = db.barbers.find(b => b.id === user.barber_id);
+    if (barber) (barber as any).password = password.trim();
+  }
+
   saveDb();
-  const { password: _, ...safe } = user;
-  res.json({ success: true, user: safe });
+  res.json({ success: true, user });
+});
+
+app.post('/api/barber/change-credentials', (req, res) => {
+  const { currentEmail, currentPassword, newEmail, newPassword } = req.body;
+  if (!currentEmail || !currentPassword || !newEmail || !newPassword) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios (e-mail antigo, senha antiga, novo e-mail e nova senha).' });
+  }
+
+  const normalizedCurrent = currentEmail.toLowerCase().trim();
+  const normalizedNew = newEmail.toLowerCase().trim();
+
+  const user = db.users.find(u => u.role === 'barber' && u.email?.toLowerCase().trim() === normalizedCurrent);
+  if (!user) {
+    return res.status(401).json({ error: 'E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.' });
+  }
+
+  const registeredPass = user.password || 'barbeiro123';
+  if (registeredPass !== currentPassword) {
+    return res.status(401).json({ error: 'E-mail antigo ou senha antiga incorretos. A alteração não foi autorizada.' });
+  }
+
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'A nova senha deve possuir no mínimo 4 caracteres.' });
+  }
+
+  if (normalizedCurrent !== normalizedNew) {
+    const collision = db.users.find(u => u.id !== user.id && u.email?.toLowerCase().trim() === normalizedNew);
+    if (collision) {
+      return res.status(409).json({ error: 'O novo e-mail já está em uso por outro usuário.' });
+    }
+  }
+
+  user.email = normalizedNew;
+  user.password = newPassword.trim();
+  (user as any).updated_at = new Date().toISOString();
+
+  const barber = db.barbers.find(b => b.id === user.barber_id);
+  if (barber) {
+    barber.email = normalizedNew;
+    (barber as any).password = newPassword.trim();
+  }
+
+  saveDb();
+
+  res.json({
+    success: true,
+    message: 'Credenciais de barbeiro atualizadas com sucesso!',
+    user
+  });
 });
 
 app.delete('/api/admin/barber-accounts/:id', (req, res) => {

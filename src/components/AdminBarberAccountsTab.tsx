@@ -56,6 +56,8 @@ export const AdminBarberAccountsTab: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showBarberPassMap, setShowBarberPassMap] = useState<Record<string, boolean>>({});
+  const [copiedBarberPassMap, setCopiedBarberPassMap] = useState<Record<string, boolean>>({});
 
   // Toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -173,8 +175,9 @@ export const AdminBarberAccountsTab: React.FC = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const appUrl = `${origin}/barbeiro`;
     const barberName = acc.barber_name || acc.name || acc.nickname || 'Barbeiro';
+    const pass = acc.password || 'barbeiro123';
     const text = encodeURIComponent(
-      `💈 *Líder Barbers — Acesso do Barbeiro*\n\nOlá ${barberName}! Seu acesso ao portal e aplicativo foi configurado.\n\n📲 *Abra no seu celular para baixar o app e acessar sua agenda:*\n${appUrl}\n\n🔑 *Seu Login:* ${acc.email || 'Seu e-mail'}\n(Utilize a senha cadastrada para entrar)`
+      `💈 *Líder Barbers — Acesso do Barbeiro*\n\nOlá ${barberName}! Seu acesso ao portal e aplicativo foi configurado.\n\n📲 *Abra no seu celular para baixar o app e acessar sua agenda:*\n${appUrl}\n\n📧 *Seu Login:* ${acc.email || 'Seu e-mail'}\n🔑 *Sua Senha:* ${pass}`
     );
     const phone = acc.phone ? acc.phone.replace(/\D/g, '') : '';
     const waUrl = phone ? `https://wa.me/55${phone}?text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
@@ -223,7 +226,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
       setAccountPhone(barber.phone || '');
       setCommissionRate(barber.commission_rate || 50);
       setEditingUserId(barber.user_id || null);
-      setAccountPassword('');
+      setAccountPassword(barber.password || '');
     } else {
       // It's a Barber
       setSelectedBarberId(barber.id);
@@ -233,7 +236,7 @@ export const AdminBarberAccountsTab: React.FC = () => {
       setAccountPhone(barber.phone || '');
       setCommissionRate(50);
       setEditingUserId(null);
-      setAccountPassword('');
+      setAccountPassword((barber as any).password || '');
     }
     setModalOpen(true);
   };
@@ -497,18 +500,67 @@ export const AdminBarberAccountsTab: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Details */}
-                <div className="space-y-1.5 pt-1 text-xs text-neutral-300 bg-[#0e1017] p-2.5 rounded-lg border border-[#1d2230]">
+                {/* Details / Credenciais */}
+                <div className="space-y-2 pt-1 text-xs text-neutral-300 bg-[#0e1017] p-2.5 rounded-lg border border-[#1d2230]">
                   {hasAccount ? (
                     <>
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-                        <span className="text-neutral-400 text-[11px]">E-mail de Login:</span>
-                        <strong className="text-white font-mono text-[11px] truncate">{acc.email}</strong>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Mail className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
+                          <span className="text-neutral-400 text-[11px]">E-mail de Login:</span>
+                          <strong className="text-white font-mono text-[11px] truncate">{acc.email}</strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(acc.email);
+                            showToast('E-mail do barbeiro copiado!');
+                          }}
+                          className="p-1 rounded text-neutral-400 hover:text-white hover:bg-[#1a1d2c] transition cursor-pointer shrink-0"
+                          title="Copiar e-mail"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-[#1a1e2b]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Lock className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
+                          <span className="text-neutral-400 text-[11px]">Senha de Acesso:</span>
+                          <strong className="text-white font-mono text-[11px] font-bold tracking-wider">
+                            {showBarberPassMap[acc.barber_id] ? (acc.password || 'barbeiro123') : '••••••••'}
+                          </strong>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setShowBarberPassMap(prev => ({ ...prev, [acc.barber_id]: !prev[acc.barber_id] }))}
+                            className="p-1 rounded text-neutral-400 hover:text-[#d4af37] hover:bg-[#1a1d2c] transition cursor-pointer"
+                            title={showBarberPassMap[acc.barber_id] ? "Ocultar senha" : "Ver senha"}
+                          >
+                            {showBarberPassMap[acc.barber_id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const pass = acc.password || 'barbeiro123';
+                              navigator.clipboard.writeText(pass);
+                              setCopiedBarberPassMap(prev => ({ ...prev, [acc.barber_id]: true }));
+                              setTimeout(() => {
+                                setCopiedBarberPassMap(prev => ({ ...prev, [acc.barber_id]: false }));
+                              }, 2000);
+                              showToast('Senha do barbeiro copiada!');
+                            }}
+                            className="p-1 rounded text-neutral-400 hover:text-white hover:bg-[#1a1d2c] transition cursor-pointer"
+                            title="Copiar senha"
+                          >
+                            {copiedBarberPassMap[acc.barber_id] ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
                       </div>
 
                       {acc.phone && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 pt-1 border-t border-[#1a1e2b]">
                           <Phone className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
                           <span className="text-neutral-400 text-[11px]">WhatsApp / Contato:</span>
                           <span className="text-neutral-300 text-[11px]">{acc.phone}</span>

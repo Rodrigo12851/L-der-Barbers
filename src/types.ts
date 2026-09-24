@@ -101,6 +101,7 @@ export interface AdminAccount {
   id: string;
   name: string;
   email: string;
+  password?: string;
   phone?: string;
   active: boolean;
   role: 'admin';
@@ -119,6 +120,7 @@ export interface BarberAccount {
   has_account?: boolean;
   has_login?: boolean;
   email: string;
+  password?: string;
   barber_id: string;
   commission_rate: number;
   phone?: string;
