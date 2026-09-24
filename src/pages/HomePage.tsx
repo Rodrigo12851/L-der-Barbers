@@ -94,7 +94,7 @@ export const HomePage: React.FC = () => {
               <div className="relative rounded-2xl border border-[#d4af37]/35 bg-white dark:bg-[#14161f] p-2.5 sm:p-3 shadow-xl">
                 <div className="relative aspect-[4/3] sm:aspect-[4/5] max-h-[350px] sm:max-h-none overflow-hidden rounded-xl bg-neutral-900">
                   <img
-                    src={settings.hero_image_url || '/cover.svg'}
+                    src={settings.hero_image_url || '/logo.png'}
                     alt={`${settings.name || 'Líder Barbers'} ambiente clássico`}
                     className="h-full w-full object-cover brightness-90 contrast-105"
                   />

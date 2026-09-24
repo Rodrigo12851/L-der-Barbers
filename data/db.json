@@ -3,7 +3,7 @@
     "name": "Líder Barbers",
     "tagline": "Barbearia Clássica & Moderna",
     "logo_url": "/logo.png",
-    "hero_image_url": "/cover.svg",
+    "hero_image_url": "/logo.png",
     "phone": "(11) 98765-4321",
     "address": "Av. Principal, 780",
     "owner_configured": true,

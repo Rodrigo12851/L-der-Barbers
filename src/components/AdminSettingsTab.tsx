@@ -99,7 +99,7 @@ export const AdminSettingsTab: React.FC<{ onNotify: (msg: string, type?: 'succes
   };
 
   const handleResetHero = () => {
-    const defaultHero = '/cover.svg';
+    const defaultHero = '/logo.png';
     setHeroImageUrl(defaultHero);
     setHeroPreview(defaultHero);
     if (heroInputRef.current) heroInputRef.current.value = '';
